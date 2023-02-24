@@ -96,6 +96,7 @@ class Array(list):
 		return Array(addends_arr)
 
 
+
 	def subtract(self, subtrahend):
 		difference = []
 
@@ -160,6 +161,16 @@ class Array(list):
 		return standard_dev
 
 
+	def addArray(self, addends_arr):
+		sum_arry = []
+
+		if self.shape != Array(addends_arr).shape:
+			raise Exception("Error on function addArray, Values are not the same shape")
+
+		for index in range(len(self)):
+			sum_arry.append(self[index] + addends_arr[index])
+
+		return sum_arry
 
 
 
@@ -177,7 +188,6 @@ class WeightInitializationMethods(Math):
 		rwg = 2 * uniform(min_f, max_f) - 1
 
 		return rwg
-
 
 
 	def NormalizedXavierWeightInitializer(self, col_size, n_of_preceding_nodes, n_of_proceding_node):
@@ -279,11 +289,13 @@ class ForwardPropagation(ActivationFunction):
 		super().__init__()
 
 
-	def createLayer(self, input_value, weight_value):
+	def createLayer(self, input_value, weight_value, bias_weight):
 		weighted_sum = self.getWeightedSum(input_value, weight_value)
-		result = self.neuronActivation(weighted_sum)
+		biased_weighted_sum = Array(weighted_sum).addArray(arrayMethods().flatten(bias_weight))
+		result = self.neuronActivation(biased_weighted_sum)
 
-		return result
+
+		return Array(result)
 
 
 	def neuronActivation(self, input_array):
@@ -306,6 +318,8 @@ class ForwardPropagation(ActivationFunction):
 		return weighted_sum_arr
 
 
+	def applyBias(self, bias, weighted_sum_arr):
+		return Array(weighted_sum_arr).add(bias)
 
 
 
@@ -488,6 +502,9 @@ class arrayMethods():
 	def flatten(self, arr):
 	    flattened = []
 
+	    if len(self.getShape(arr)) == 1:
+	    	return arr
+
 	    for element in arr:
 	        if isinstance(element, list):
 	            flattened.extend(self.flatten(element))
@@ -538,14 +555,6 @@ class arrayMethods():
 			resulting_arr.append(value * int_multiplier)
 
 		return resulting_arr
-
-
-
-
-
-
-
-
 
 
 
@@ -654,7 +663,7 @@ class Backpropagation(arrayMethods, Array):
 		return Array(neuron_strenghts)
 
 
-	def getAdjustedBiased(self, corresponding_layer_neurons):
+	def getAdjustedBiasdWeights(self, corresponding_layer_neurons):
 		"""
 			Calculate bias adjustment
 			
@@ -665,8 +674,8 @@ class Backpropagation(arrayMethods, Array):
 			
 			Return Array
 		"""
-
-		adjusted_biase = self.weightMultiplyArr(corresponding_layer_neurons, self.learning_rate )
+		#print(Array(corresponding_layer_neurons).multiply(self.learning_rate))
+		adjusted_biase = Array(corresponding_layer_neurons).multiply(self.learning_rate)
 		return Array(adjusted_biase)
 		
 
