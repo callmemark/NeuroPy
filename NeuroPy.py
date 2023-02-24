@@ -14,19 +14,164 @@ from random import uniform
 
 
 
-def Math():
+class Math():
 	def __init__(self):
 		pass
 
+	def getSqrt(self, num, decimal_place = 4):
+	    """
+	    Calculates the square root of a given number
+
+	    Parameters:
+	    num (float)			:	The number whose square root needs to be calculated.
+	    decimal_place(int)	:	The amount of decimal places before roundoff
+
+	    Returns:
+	    float: The square root of the given number.
+
+	    """
+	    if num < 0:
+	        raise ValueError("Error on function square_root: Square root of negative numbers is undefined")
+	    elif num == 0:
+	        return 0
+	    elif num > 0:
+	        guess = num / 2.0
+	        while True:
+	            new_guess = (guess + num / guess) / 2.0
+	            if abs(new_guess - guess) < 0.0001:
+	                return round(new_guess, decimal_place)
+
+	            guess = new_guess
+
+
+
+
+
+class Array(list):
+	def __init__(self, data):
+		super().__init__(data)
+		#self.shape = (len(data),)
+		self.shape = self.getShape()
+
+
+	def transpose(self):
+		arr = self
+		shape = self.getShape()
+		transposed_list = [[None]*shape[0] for _ in range(shape[1])]
+
+		for i in range(shape[0]):
+			for j in range(shape[1]):
+				transposed_list[j][i] = arr[i][j]
+
+		return Array(transposed_list)
+
+
+	def getShape(self):
+	    shape = []
+	    arr = self
+
+	    while isinstance(arr, list):
+	        shape.append(len(arr))
+	        arr = arr[0]
+
+	    self.shape = shape
+	    return shape
+
+
+	def multiply(self, multiplier):
+		array_product = []
+
+		for value in self:
+			array_product.append(value * multiplier)
+
+		return Array(array_product)
+
+
+	def add(self, addends):
+		addends_arr = []
+
+		for value in self:
+			addends_arr.append(value + addends)
+
+		return Array(addends_arr)
+
+
+	def subtract(self, subtrahend):
+		difference = []
+
+		for value in self:
+			difference.append(value - subtrahend)
+
+		return Array(difference)
+
+
+	def sum(self):
+		total = 0
+		for value in self:
+			total += value
+
+		return total
+
+
+	def sumOfOneAxis(self):
+		result = 0
+
+		for value in self:
+			result += value
+
+		return result
+
+
+	def min(self):
+		min_val = 0
+		for value in self:
+			if value < min_val:
+				min_val = value
+
+		return min_val
+
+
+	def max(self):
+		max_val = 0
+		for value in self:
+			if value > max_val:
+				max_val = value
+
+		return max_val
+
+
+	def mean(self):
+		sum_of_arr = self.sum()
+		mean_val = sum_of_arr / len(self)
+
+		return mean_val
+
+
+	def squared(self):
+		squared_arr = []
+		for value in self:
+			squared_arr.append(value ** 2)
+
+		return Array(squared_arr) 
+
+
+	def std(self):
+		standard_dev = Math().getSqrt(self.subtract(self.mean()).squared().sum() / len(self))
+		return standard_dev
 
 
 
 
 
 
-class WeightInitializationMethods():
+
+
+
+
+class WeightInitializationMethods(Math):
 	def __init__(self):
-		pass
+		super().__init__()
+
 
 	def radomInitializer(self, min_f = 0, max_f = 1.0):
 		rwg = 2 * uniform(min_f, max_f) - 1
@@ -35,10 +180,31 @@ class WeightInitializationMethods():
 
 
 
+	def NormalizedXavierWeightInitializer(self, col_size, n_of_preceding_nodes, n_of_proceding_node):
+		n = n_of_preceding_nodes
+		m = n_of_proceding_node
+
+		sum_of_node_count = n + m
+
+		lower_range, upper_range = -(self.getSqrt(6.0) / self.getSqrt(sum_of_node_count)), (self.getSqrt(6.0) / self.getSqrt(sum_of_node_count))
+		rand_num = Array([uniform(0, 1) for i in range(col_size)])
+		scaled = rand_num.add(lower_range).multiply((upper_range - lower_range))
+
+		return scaled
+
+
+
+
+
+
+
+
+
 
 
 class WeightInitializer(WeightInitializationMethods):
 	def __init__(self):
+		super().__init__()
 		super().__init__()
 
 
@@ -54,7 +220,22 @@ class WeightInitializer(WeightInitializationMethods):
 
 			final_weight_arr.append(col_arr)
 
-		return final_weight_arr
+		return Array(final_weight_arr)
+
+
+	def initNormalizedXavierWeight(self, dim, n_of_preceding_nodes, n_of_proceding_node):
+
+		final_weight_arr = []
+		row = dim[0]
+		col = dim[1]
+
+		for row_count in range(row):
+			data = self.NormalizedXavierWeightInitializer(col, n_of_preceding_nodes, n_of_proceding_node)
+			final_weight_arr.append(data)
+
+		return Array(final_weight_arr)
+
+
 
 
 
@@ -364,53 +545,7 @@ class arrayMethods():
 
 
 
-class Array(list):
-	def __init__(self, data):
-		super().__init__(data)
-		#self.shape = (len(data),)
-		self.shape = self.getShape()
 
-
-	def transpose(self):
-		arr = self
-		shape = self.getShape()
-		transposed_list = [[None]*shape[0] for _ in range(shape[1])]
-
-		for i in range(shape[0]):
-			for j in range(shape[1]):
-				transposed_list[j][i] = arr[i][j]
-
-		return Array(transposed_list)
-
-
-	def getShape(self):
-	    shape = []
-	    arr = self
-
-	    while isinstance(arr, list):
-	        shape.append(len(arr))
-	        arr = arr[0]
-
-	    self.shape = shape
-	    return shape
-
-
-	def multiply(self, multiplier):
-		array_product = []
-
-		for value in self:
-			array_product.append(value * multiplier)
-
-		return Array(array_product)
-
-
-	def sumOfOneAxis(self):
-		result = 0
-
-		for value in self:
-			result += value
-
-		return result
 
 
 
@@ -434,14 +569,14 @@ class Backpropagation(arrayMethods, Array):
 			Calculate the final layer neuron strenghts
 
 			Arguments:
-			final_output 				:	Final output that is calculated by sigmoid function
-			argmaxed_final_output		:	The final ouput that is produced by argmax function
+			final_output (List / Array)				:	Final output that is calculated by sigmoid function
+			argmaxed_final_output (List / Array)	:	The final ouput that is produced by argmax function
 
 			Returns: Array
 
 		"""
-
-		return self.subtractOneDimArray(final_output, argmaxed_final_output)
+		returned_value = self.subtractOneDimArray(final_output, argmaxed_final_output)
+		return Array(returned_value)
 
 
 	def applyWeightAdjustment(self, initial_weight, weight_adjustment):
@@ -449,12 +584,13 @@ class Backpropagation(arrayMethods, Array):
 			Apply the adjustments of the weights to the initial weight to update its value by getting the sum of the two array
 
 			Arguments:
-			initial_weight				:	The weights value that is used in forward propagation
-			weight_adjustment 			:	The value used to add to the initial weight
+			initial_weight (List / Array)			:	The weights value that is used in forward propagation
+			weight_adjustment  (List / Array)		:	The value used to add to the initial weight
 
 			Returns: Array
 		"""
-		return self.addArray(initial_weight, weight_adjustment)
+		returned_value = self.addArray(initial_weight, weight_adjustment)
+		return Array(returned_value)
 
 
 	def calculateWeightAdjustment(self, proceding_neuron_strenght, preceding_neuron_output):
@@ -463,8 +599,8 @@ class Backpropagation(arrayMethods, Array):
 			Neural network
 			
 			Arguments:
-			proceding_neuron_strenght	:	The layer of neurons that is second to recieve data relative to forward propagation direction
-			preceding_neuron_output 	:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			proceding_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
+			preceding_neuron_output (List / Array)		:	The layer of neurons that is first to recieve data relative to forward propagation direction
 			
 			Returns: Array
 
@@ -485,7 +621,7 @@ class Backpropagation(arrayMethods, Array):
 
 			final_weight.append(result_row)
 
-		return final_weight
+		return Array(final_weight)
 
 
 	def getHLayerNeuronStrength(self, preceding_neuron_output_arr, weight, proceding_neuron_output_arr):
@@ -493,11 +629,11 @@ class Backpropagation(arrayMethods, Array):
 			calculate the strenght of the neurons in a hidden layer 
 			
 			Arguments:
-			preceding_neuron_output 	:	The layer of neurons that is first to recieve data relative to forward propagation direction
-			weights 					:	The weights in the middle to the two given neurons
-			proceding_neuron_strenght	:	The layer of neurons that is second to recieve data relative to forward propagation direction
+			preceding_neuron_output (List / Array)		:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			weights (List / Array) 						:	The weights in the middle to the two given neurons
+			proceding_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
 			
-			Retuns:Array
+			Retuns: Array
 
 		"""
 
@@ -515,7 +651,7 @@ class Backpropagation(arrayMethods, Array):
 		sum_of_rows_arr = self.getSumOfRows(dot_product_arr)
 		neuron_strenghts = self.multiply_array(self.flatten(sum_of_rows_arr), product_arr)
 
-		return neuron_strenghts
+		return Array(neuron_strenghts)
 
 
 	def getAdjustedBiased(self, corresponding_layer_neurons):
@@ -523,14 +659,15 @@ class Backpropagation(arrayMethods, Array):
 			Calculate bias adjustment
 			
 			Argumemts:
-			corresponding_layer_neurons	:	Updated neuron strnghts
+			corresponding_layer_neurons	(List / Array)	:	Updated neuron strenghts
 
 			Formula: -learning_rate * updated_neuron_strenght
 			
+			Return Array
 		"""
 
 		adjusted_biase = self.weightMultiplyArr(corresponding_layer_neurons, self.learning_rate )
-		return adjusted_biase
+		return Array(adjusted_biase)
 		
 
 
@@ -539,9 +676,9 @@ class Backpropagation(arrayMethods, Array):
 			Calculate the mean squared error or cost value
 
 			Arguments;
-			ouput 					:	The unlabled output, or the output from the sigmoid function
-			labeld_output			:	The labled output from the sigmoid funtion
-
+			ouput (List / Array) 				:	The unlabled output, or the output from the sigmoid function
+			labeld_output (List / Array)		:	The labled output
+			
 			returns : float
 			Formula : 1 / lne(ouput) * sum((ouput - labeld_output) ** 2)
 
@@ -565,7 +702,7 @@ class Backpropagation(arrayMethods, Array):
 
 
 
-
+"""
 sample_input = [0.1, 0.89, 0.87, 0.9, 0.2]
 
 
@@ -601,5 +738,4 @@ middle_layer_neuron_cost_3 = Backpropagation.getHLayerNeuronStrength(sample_inpu
 
 error = Backpropagation.getMeanSquaredError(fl_output, argmax_putput)
 
-print(error)
-
+"""
