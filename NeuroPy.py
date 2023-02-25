@@ -49,6 +49,9 @@ class Math():
 
 class Array(list):
 	def __init__(self, data):
+		"""
+			Create new Array object to extend Python list functionality
+		"""
 		super().__init__(data)
 		#self.shape = (len(data),)
 		self.shape = self.getShape()
@@ -262,7 +265,7 @@ class ActivationFunction():
 		return result
 
 
-	def argMAx(selc, arr):
+	def argMax(selc, arr):
 		output_array = []
 
 		max_value_index = arr.index(max(arr))
