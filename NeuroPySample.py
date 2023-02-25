@@ -100,7 +100,6 @@ training_data = [train_data_01, train_data_02, train_data_02]
 answer = [answer_01, answer_02, answer_03]
 
 
-
 learn_cycle = 10
 epoch = 1000
 
@@ -125,11 +124,11 @@ test_asnwer_03 = [0, 0, 1]
 
 
 result_01 = model.predictImage(test_data_01)
-print("Prediction: ", npy.ActivationFunction().argMAx(result_01), " correct_answer: ",  test_asnwer_01)
+print("Prediction: ", npy.ActivationFunction().argMax(result_01), " correct_answer: ",  test_asnwer_01)
 result_02 = model.predictImage(test_data_02)
-print("Prediction: ", npy.ActivationFunction().argMAx(result_02), " correct_answer: ",  test_asnwer_02)
+print("Prediction: ", npy.ActivationFunction().argMax(result_02), " correct_answer: ",  test_asnwer_02)
 result_03 = model.predictImage(test_data_03)
-print("Prediction: ", npy.ActivationFunction().argMAx(result_03), " correct_answer: ",  test_asnwer_03)
+print("Prediction: ", npy.ActivationFunction().argMax(result_03), " correct_answer: ",  test_asnwer_03)
 
 
 model.plotLearningCcurve()
