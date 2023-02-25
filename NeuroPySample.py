@@ -40,7 +40,7 @@ class SimpleModel():
     self.l2_output = npy.ForwardPropagation().createLayer(self.l1_output, self.l2_weights, self.l2_biased_weights)
     self.fl_output = npy.ForwardPropagation().createLayer(self.l2_output, self.fl_weights, self.f1_biased_weights)
 
-    back_propagation = npy.Backpropagation(learning_rate = -0.01)
+    back_propagation = npy.BackPropagation(learning_rate = -0.01)
 
     fl_bp_neuron_strenght = back_propagation.getFLayerNeuronStrenght(self.fl_output, correct_answer)
 
@@ -67,7 +67,7 @@ class SimpleModel():
     self.l2_weights = l2_applied_weight_adjustment
     self.l1_output = l3_applied_weight_adjustment
 
-    self.error_calc = npy.Backpropagation().getMeanSquaredError(self.fl_output, correct_answer)
+    self.error_calc = npy.BackPropagation().getMeanSquaredError(self.fl_output, correct_answer)
     self.learning_rate_arr.append(self.error_calc)
 
 
@@ -101,7 +101,7 @@ answer = [answer_01, answer_02, answer_03]
 
 
 learn_cycle = 10
-epoch = 1000
+epoch = 1
 
 
 for i in range(epoch):
