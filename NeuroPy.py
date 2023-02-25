@@ -52,36 +52,64 @@ class Array(list):
 		"""
 			Create new Array object to extend Python list functionality
 		"""
+
 		super().__init__(data)
 		#self.shape = (len(data),)
+
 		self.shape = self.getShape()
 
 
 	def transpose(self):
-		arr = self
+		"""
+			Transpose the multidimensional this (Array) object swapping its elemtns positions
+
+			Arguements			:	Takes 0 argumnts
+			Returns(Array) 		:	Transposed version of this (Array) object
+		"""
+
 		shape = self.getShape()
+		if len(self.shape) == 1:
+			return Array(self)
+
 		transposed_list = [[None]*shape[0] for _ in range(shape[1])]
 
 		for i in range(shape[0]):
 			for j in range(shape[1]):
-				transposed_list[j][i] = arr[i][j]
+				transposed_list[j][i] = self[i][j]
 
 		return Array(transposed_list)
 
 
 	def getShape(self):
-	    shape = []
-	    arr = self
+		"""
+			Get the shape of the this (Array) object
 
-	    while isinstance(arr, list):
-	        shape.append(len(arr))
-	        arr = arr[0]
+			Arguments 		:	Takes 0 arguments
+			Returns(Array)	:	The hape of this (Array) objects shape
+		"""
+		shape = []
+		arr = self
 
-	    self.shape = shape
-	    return shape
+
+		while isinstance(arr, list):
+			shape.append(len(arr))
+			arr = arr[0]
+
+		self.shape = shape
+		return shape
+
 
 
 	def multiply(self, multiplier):
+		"""
+			Multiply this (Array) object
+
+			Arguments:
+			multiplier(float)		:	The number use to multiply each element in this Array
+
+			Return: Array
+
+		"""
 		array_product = []
 
 		for value in self:
@@ -90,7 +118,17 @@ class Array(list):
 		return Array(array_product)
 
 
+
 	def add(self, addends):
+		"""
+			Add this (Array) object
+
+			Arguments:
+			addends(float)		:	The number use to Add each element in this Array
+
+			Return: Array
+
+		"""
 		addends_arr = []
 
 		for value in self:
@@ -101,6 +139,15 @@ class Array(list):
 
 
 	def subtract(self, subtrahend):
+		"""
+			Subtract this (Array) object
+
+			Arguments:
+			subtrahend(float)		:	The number use to Subtract each element in this Array
+
+			Return: Array
+
+		"""
 		difference = []
 
 		for value in self:
@@ -110,6 +157,12 @@ class Array(list):
 
 
 	def sum(self):
+		"""
+			get the sum of all alements in array
+
+			Arguments: takes 0 arguments
+			Return: float
+		"""
 		total = 0
 		for value in self:
 			total += value
@@ -117,16 +170,13 @@ class Array(list):
 		return total
 
 
-	def sumOfOneAxis(self):
-		result = 0
-
-		for value in self:
-			result += value
-
-		return result
-
-
 	def min(self):
+		"""
+			get the minimum or lowest value in this (Array) object
+
+			Arguments: takes 0 arguments
+			Return: float
+		"""
 		min_val = 0
 		for value in self:
 			if value < min_val:
@@ -136,6 +186,12 @@ class Array(list):
 
 
 	def max(self):
+		"""
+			get the maximum or highest value in this (Array) object
+
+			Arguments: takes 0 arguments
+			Return: float
+		"""
 		max_val = 0
 		for value in self:
 			if value > max_val:
@@ -145,6 +201,12 @@ class Array(list):
 
 
 	def mean(self):
+		"""
+			caculkate the mean value of this (Array) object
+
+			Arguments: takes 0 arguments
+			Return: float
+		"""
 		sum_of_arr = self.sum()
 		mean_val = sum_of_arr / len(self)
 
@@ -152,6 +214,12 @@ class Array(list):
 
 
 	def squared(self):
+		"""
+			caculkate the squared value of every elements in this (Array) object
+
+			Arguments: takes 0 arguments
+			Return: Array
+		"""
 		squared_arr = []
 		for value in self:
 			squared_arr.append(value ** 2)
@@ -160,11 +228,26 @@ class Array(list):
 
 
 	def std(self):
+		"""
+			caculate the standard deviation value of this (Array) object
+
+			Arguments: takes 0 arguments
+			Return: float
+		"""
 		standard_dev = Math().getSqrt(self.subtract(self.mean()).squared().sum() / len(self))
 		return standard_dev
 
 
+
 	def addArray(self, addends_arr):
+		"""
+			Add two array 
+
+			Arguments:
+			addends_arr(Array / List)		:	The array use to add to this array
+
+			Return: Array
+		"""
 		sum_arry = []
 
 		if self.shape != Array(addends_arr).shape:
@@ -173,7 +256,7 @@ class Array(list):
 		for index in range(len(self)):
 			sum_arry.append(self[index] + addends_arr[index])
 
-		return sum_arry
+		return Array(sum_arry)
 
 
 
@@ -184,16 +267,41 @@ class Array(list):
 
 class WeightInitializationMethods(Math):
 	def __init__(self):
+		"""
+			Methods to intializ random value generated using different mathematical functions
+
+			Arguments: Takes 0 arguments
+		"""
 		super().__init__()
 
 
+
 	def radomInitializer(self, min_f = 0, max_f = 1.0):
+		"""
+			Generate random number in range of given paramenter using basic calculation technique
+
+			Arguments: 
+			min_f (float) 	:	The minimum value limit
+			max_f (float)	:	The maximum value limit
+
+			Returns:float
+		"""
 		rwg = 2 * uniform(min_f, max_f) - 1
 
 		return rwg
 
 
 	def NormalizedXavierWeightInitializer(self, col_size, n_of_preceding_nodes, n_of_proceding_node):
+		"""
+			Generate random number using xavier weight intializer 
+
+			Arguments: 
+			col_size (float) 				:	the number of elements or weights to be generated since this will be a 1d array
+			n_of_preceding_nodes (Array)	:	The number of neurons where outputs will come from
+			n_of_proceding_node (Array)		:	The number of neurons that will accepts the outputs frrom the preceding neuro
+
+			Returns:Array
+		"""
 		n = n_of_preceding_nodes
 		m = n_of_proceding_node
 
@@ -203,10 +311,7 @@ class WeightInitializationMethods(Math):
 		rand_num = Array([uniform(0, 1) for i in range(col_size)])
 		scaled = rand_num.add(lower_range).multiply((upper_range - lower_range))
 
-		return scaled
-
-
-
+		return Array(scaled)
 
 
 
@@ -217,11 +322,26 @@ class WeightInitializationMethods(Math):
 
 class WeightInitializer(WeightInitializationMethods):
 	def __init__(self):
-		super().__init__()
+		"""
+			This class contains different methods to generate weights tot thee neural network
+
+			Arguments: takes 0 arguments
+		"""
 		super().__init__()
 
 
 	def intializeWeight(self, dim, min_f = -1.0, max_f = 1.0):
+		"""
+			This method generate weights using simple random number calculations
+
+			Arguments: 
+			dim (lsit)		: 	A two lenght list contains the row and columnn [row, col] or shape of the generated weight
+			min_f (float) 	:	The minimum value limit
+			max_f (float)	:	The maximum value limit
+			
+
+			Returns:Array
+		"""
 		final_weight_arr = []
 		row = dim[0]
 		col = dim[1]
@@ -237,6 +357,16 @@ class WeightInitializer(WeightInitializationMethods):
 
 
 	def initNormalizedXavierWeight(self, dim, n_of_preceding_nodes, n_of_proceding_node):
+		"""
+			This method generate weights using xavier weight initialization method
+
+			Arguments: 
+			dim (list)		: 	A two lenght list contains the row and columnn [row, col] or shape of the generated weight
+			n_of_preceding_nodes (Array)	:	The number of neurons where outputs will come from
+			n_of_proceding_node (Array)		:	The number of neurons that will accepts the outputs frrom the preceding neuro
+
+			Returns:Array
+		"""
 
 		final_weight_arr = []
 		row = dim[0]
@@ -255,17 +385,40 @@ class WeightInitializer(WeightInitializationMethods):
 
 
 
+
 class ActivationFunction():
 	def __init__(self):
+		"""
+			This class contains different methods that calculate different deep learning functions
+
+			Arguments: takes 0 arguments
+		"""
 		self.E = 2.71
 
 
 	def sigmoidFunction(self, x):
+		"""
+			This method perform a sigmoid function calculation
+
+			Arguments: 
+			x(float) 	: The value where sigmoid function will be applied
+			
+
+			Returns: float
+		"""
 		result = 1 / (1 + self.E ** -x)
 		return result
 
 
 	def argMax(selc, arr):
+		"""
+			This method search for the maximum value and create a new list where only the maximum value will have a value of 1
+
+			Arguments: 
+			arr(Array) 	: The array that will be transformed into a new array
+			
+			Returns: Array
+		"""
 		output_array = []
 
 		max_value_index = arr.index(max(arr))
@@ -276,7 +429,7 @@ class ActivationFunction():
 			elif index != max_value_index:
 				output_array.append(0)
 
-		return output_array
+		return Array(output_array)
 
 
 
@@ -289,19 +442,41 @@ class ActivationFunction():
 
 class ForwardPropagation(ActivationFunction):
 	def __init__(self):
+		"""
+			This class contains different methods for neural network forward propagation
+
+			Arguments: takes 0 arguments
+		"""
 		super().__init__()
 
 
 	def createLayer(self, input_value, weight_value, bias_weight):
+		"""
+			Creates a nueral network layer
+
+			Arguments: 
+			input_value (Array) 	: 	testing inputs 
+			weight_value (Array)	:	The corresponding weight to this layer
+			bias_weight (Array)		:	The weight of the bias for this layer
+			
+			Returns (Array) : The ouput of the this layer
+		"""
 		weighted_sum = self.getWeightedSum(input_value, weight_value)
 		biased_weighted_sum = Array(weighted_sum).addArray(arrayMethods().flatten(bias_weight))
 		result = self.neuronActivation(biased_weighted_sum)
-
 
 		return Array(result)
 
 
 	def neuronActivation(self, input_array):
+		"""
+			Handles neuron activation
+
+			Arguments: 
+			input_array (Array) 	: 	Expects the array of weighted sum 
+			
+			Returns (Array)
+		"""
 		result = []
 		for input_val in input_array:
 			result.append(self.sigmoidFunction(input_val))
@@ -310,6 +485,16 @@ class ForwardPropagation(ActivationFunction):
 
 
 	def getWeightedSum(self, input_arr, weight_arr):
+		"""
+			Caculate weighted sum of the incoming input
+
+			Arguments: 
+			input_arr (Array) 	: 	Inputs eigther from a layer ouput or the main testing data
+			weight_arr (Array)	: 	The generated weight
+			
+			Returns (Array) : Weighted sum 
+		"""
+
 		weighted_sum_arr = []
 		for row in weight_arr:
 			sum_of_product = 0
@@ -321,50 +506,17 @@ class ForwardPropagation(ActivationFunction):
 		return weighted_sum_arr
 
 
-	def applyBias(self, bias, weighted_sum_arr):
-		return Array(weighted_sum_arr).add(bias)
+	def applyBias(self, bias_weight_arr, weighted_sum_arr):
+		"""
+			apply the bias to the incoming inputs to the recieving neurons layer
 
-
-
-
-
-
-class GeneticMutation():
-	def __init__(self):
-		super().__init__()
-
-
-	def geneticMutationAlgorithm(self, weight_set_A, weight_set_B, index_lim_arr = []):
-		weight_seta_size = len(weight_set_A)
-		weight_setb_size = len(weight_set_B)
-
-		weight_nrow = int((weight_seta_size + weight_setb_size) / 2)
-
-		mutated_weight_set = []
-		
-		for row_index in range(weight_nrow):
-			set_a_col = weight_set_A[row_index]
-			set_b_col = weight_set_B[row_index]
-			new_mutated_col = []
-
-
-			if len(index_lim_arr) > 0:
-				if row_index in index_lim_arr:
-					continue
-
-
-			col_size = int((len(set_a_col) + len(set_b_col)) / 2)
-
-			for col_index in range(col_size) :
-				rng = uniform(0, 1)
-				if rng >= 0.5:
-					new_mutated_col.append(set_a_col[col_index])
-				elif rng < 0.5:
-					new_mutated_col.append(set_b_col[col_index])
-
-			mutated_weight_set.append(new_mutated_col)
-
-		return mutated_weight_set
+			Arguments: 
+			bias_weight_arr (Array) 		: 	weights of the bias to be added to the incoming inputs
+			weighted_sum_arr (Array)		: 	The generated weight
+			
+			Returns (Array) : biased inputs
+		"""
+		return Array(weighted_sum_arr).add(bias_weight_arr)
 
 
 
@@ -699,55 +851,7 @@ class Backpropagation(arrayMethods, Array):
 		arr_difference = self.subtractOneDimArray(ouput, labeld_output)
 		squared_arr = self.square(arr_difference)
 
-		arr_sum = Array(squared_arr).sumOfOneAxis()
+		arr_sum = Array(squared_arr).sum()
 		e = 1 / 3 * arr_sum
 
 		return e
-
-
-
-
-
-    
-
-
-
-
-
-"""
-sample_input = [0.1, 0.89, 0.87, 0.9, 0.2]
-
-
-l1_w = WeightInitializer().intializeWeight([20, 5])
-l2_w = WeightInitializer().intializeWeight([15, 20])
-fl_w = WeightInitializer().intializeWeight([3, 15])
-
-l1_output = ForwardPropagation().createLayer(sample_input, l1_w)
-l2_output = ForwardPropagation().createLayer(l1_output, l2_w)
-fl_output = ForwardPropagation().createLayer(l2_output, fl_w)
-
-
-argmax_putput = ActivationFunction().argMAx(fl_output)
-
-Backpropagation = Backpropagation(learning_rate = -0.01)
-
-final_layer_neuron_cost = Backpropagation.getFLayerNeuronStrenght(fl_output, argmax_putput)
-
-
-weight_adjustments = Backpropagation.calculateWeightAdjustment(final_layer_neuron_cost, l2_output)
-applied_weight_adjustment = Backpropagation.applyWeightAdjustment(fl_w, weight_adjustments)
-middle_layer_neuron_cost = Backpropagation.getHLayerNeuronStrength(l2_output, applied_weight_adjustment, final_layer_neuron_cost)
-
-
-weight_adjustments_2 = Backpropagation.calculateWeightAdjustment(middle_layer_neuron_cost, l1_output)
-applied_weight_adjustment_2 = Backpropagation.applyWeightAdjustment(l2_w, weight_adjustments_2)
-middle_layer_neuron_cost_2 = Backpropagation.getHLayerNeuronStrength(l1_output, applied_weight_adjustment_2, middle_layer_neuron_cost)
-
-
-weight_adjustments_3 = Backpropagation.calculateWeightAdjustment(middle_layer_neuron_cost_2, sample_input)
-applied_weight_adjustment_3 = Backpropagation.applyWeightAdjustment(l1_w, weight_adjustments_3)
-middle_layer_neuron_cost_3 = Backpropagation.getHLayerNeuronStrength(sample_input, applied_weight_adjustment_3, middle_layer_neuron_cost_2)
-
-error = Backpropagation.getMeanSquaredError(fl_output, argmax_putput)
-
-"""
