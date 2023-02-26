@@ -962,7 +962,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 
 	def fit(self, train_data_arr, answer_sheet_arr, learn_cycle, epoch):
-
+		print("Fitting Model with ", len(self.layer_sizes) - 1, " Hidden Layers and have a total of ", Array(self.hidden_layer_size_arr).sum(), " neurons")
 		if len(train_data_arr) != len(answer_sheet_arr):
 			raise ValueError("Error on fitting data. Training data and Answer sheet don't have equal lenght")
 
@@ -980,9 +980,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 					if len(answer_sheet_arr[training_data_index]) != self.layer_sizes[-1][0]:
 						raise ValueError("The answer key size and the networks final layer size are not equal")
 
-					print("Inputs: ", train_data_arr[training_data_index])
-					print("Answer: ", answer_sheet_arr[training_data_index])
-
+					
 					## Forward propagation ##
 					for layer_index in range(network_layer):
 						layer_ouput = self.createLayer(layer_input, self.weights_set[layer_index], self.bias_weight_set[layer_index])
@@ -990,7 +988,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						layer_input = layer_ouput
 
 
-					print("Final Answer: ", layer_output_arr[-1])
 					mean_square_error = self.getMeanSquaredError(layer_output_arr[-1], answer_sheet_arr[training_data_index])
 					self.mean_square_error_log.append(mean_square_error)
 
