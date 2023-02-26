@@ -948,9 +948,9 @@ class BackPropagation(ArrayMethods, Array):
 
 
 class CreateNetwork(ForwardPropagation, BackPropagation):
-	def __init__(self, input_size, hidden_layer_size_arr):
+	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01):
 		super().__init__()
-		self.learning_rate = -0.01
+		self.learning_rate = learning_rate
 		self.input_size = input_size
 		self.hidden_layer_size_arr = hidden_layer_size_arr
 
