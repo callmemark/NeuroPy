@@ -713,9 +713,6 @@ class ActivationFunction():
 
 
 
-
-
-
 class ForwardPropagation(ActivationFunction):
 	def __init__(self):
 		"""
@@ -1030,6 +1027,18 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 							break
 
 
+
+	def predict(self, data):
+		network_layer = len(self.layer_sizes)
+		layer_output_arr = []
+
+		layer_input = data
+		for layer_index in range(network_layer):
+			layer_ouput = self.createLayer(layer_input, self.weights_set[layer_index], self.bias_weight_set[layer_index])
+			layer_output_arr.append(layer_ouput)
+			layer_input = layer_ouput
+
+		return layer_output_arr[-1]
 
 
 
