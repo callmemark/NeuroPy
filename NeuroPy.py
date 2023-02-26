@@ -942,23 +942,104 @@ class BackPropagation(ArrayMethods, Array):
 
 
 
+
+
+
+
+
 class CreateNetwork(ForwardPropagation, BackPropagation):
 	def __init__(self, input_size, hidden_layer_size_arr):
 		super().__init__()
-
+		self.learning_rate = -0.01
 		self.input_size = input_size
 		self.hidden_layer_size_arr = hidden_layer_size_arr
 
 		self.layer_sizes = self.initailizeLayerSizes()
-		self.weights_set = []
+		self.weights_set = self.initializeLayerWeights()
+		self.bias_weight_set = self.initializeBiasedWeights()
+		self.mean_square_error_log = []
+
+
+
+	def fit(self, train_data_arr, answer_sheet_arr, learn_cycle, epoch):
+
+		if len(train_data_arr) != len(answer_sheet_arr):
+			raise ValueError("Error on fitting data. Training data and Answer sheet don't have equal lenght")
+
+
+		network_layer = len(self.layer_sizes)
+		for cycle in range(learn_cycle): 
+			for training_data_index in range(len(train_data_arr)):
+				for training_epoch in range(epoch): 
+					layer_input = train_data_arr[training_data_index]
+					layer_output_arr = []
+
+					if len(layer_input) != self.input_size:
+						raise ValueError("The training data and the expected input of the network are not equal")
+
+					if len(answer_sheet_arr[training_data_index]) != self.layer_sizes[-1][0]:
+						raise ValueError("The answer key size and the networks final layer size are not equal")
+
+					print("Inputs: ", train_data_arr[training_data_index])
+					print("Answer: ", answer_sheet_arr[training_data_index])
+
+					## Forward propagation ##
+					for layer_index in range(network_layer):
+						layer_ouput = self.createLayer(layer_input, self.weights_set[layer_index], self.bias_weight_set[layer_index])
+						layer_output_arr.append(layer_ouput)
+						layer_input = layer_ouput
+
+
+					print("Final Answer: ", layer_output_arr[-1])
+					mean_square_error = self.getMeanSquaredError(layer_output_arr[-1], answer_sheet_arr[training_data_index])
+					self.mean_square_error_log.append(mean_square_error)
+
+					## Back propagation ##
+					final_layer_neuron_strenght = self.getFLayerNeuronStrenght(layer_output_arr[-1], answer_sheet_arr[training_data_index])
+					layer_neuron_strenght = final_layer_neuron_strenght
+
+
+
+
+					for layer_index in range(network_layer - 1, -1, -1):
+						if layer_index != 0:
+							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, layer_output_arr[layer_index - 1])
+							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
+							new_layer_neuron_strenght = self.getHLayerNeuronStrength(layer_output_arr[layer_index - 1], adjusted_weight, layer_neuron_strenght)
+							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
+
+							if len(self.bias_weight_set[layer_index][0]) != len(adjusted_bias_weight):
+								raise Exception("Internal Error id: 001: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
+							if len(self.weights_set[layer_index]) != len(adjusted_weight):
+								raise ValueError("Internal Error id: 002: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
+
+							self.bias_weight_set[layer_index] = [adjusted_bias_weight]
+							self.weights_set[layer_index] = adjusted_weight
+
+							layer_neuron_strenght = new_layer_neuron_strenght
+
+						elif layer_index == 0:
+							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, train_data_arr[training_data_index])
+							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
+							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
+
+							if len(self.bias_weight_set[layer_index][0]) != len(adjusted_bias_weight):
+								raise ValueError("Internal Error id: 003: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
+							if len(self.weights_set[layer_index]) != len(adjusted_weight):
+								raise ValueError("Internal Error id: 004: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
+
+							self.bias_weight_set[layer_index] = [adjusted_bias_weight]
+							self.weights_set[layer_index] = adjusted_weight
+							break
+
+
+
 
 
 	def initailizeLayerSizes(self):
 		layer_sizes = []
-
 		for layer_index in range(len(self.hidden_layer_size_arr)):
 			current_layer_size = self.hidden_layer_size_arr[layer_index]
-
 
 			if layer_index == 0:
 				new_layer = [current_layer_size, self.input_size]
@@ -970,7 +1051,50 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		return layer_sizes
 
 
-	def initializeNetworkWeights(self):
-		pass
-		#for layer_index in range(len(self.layer_sizes)):
-		#	new_weight = WeightInitializer().initNormalizedXavierWeight(layer_index[layer_index], layer_index[layer_index][0], layer_index[layer_index + 1][0])
+	def initializeLayerWeights(self):
+		new_weight_set = []
+		for layer_index in range(len(self.layer_sizes)):
+			if layer_index != len(self.layer_sizes) - 1:
+				new_weight = WeightInitializer().initNormalizedXavierWeight(
+						self.layer_sizes[layer_index], 
+						self.layer_sizes[layer_index][0], 
+						self.layer_sizes[layer_index + 1][0]
+					)
+			
+			elif layer_index == len(self.layer_sizes) - 1:
+				new_weight = WeightInitializer().initNormalizedXavierWeight(
+						self.layer_sizes[layer_index], 
+						self.layer_sizes[layer_index][0],
+						0
+					)
+
+			new_weight_set.append(new_weight)
+
+		return new_weight_set
+
+
+
+	def initializeBiasedWeights(self):
+		new_bias_weight_set = []
+
+		for layer_index in range(len(self.layer_sizes)):
+			bias_weight_dim = [1, self.layer_sizes[layer_index][0]]
+
+			if layer_index != len(self.layer_sizes) - 1:
+				new_weight = WeightInitializer().initNormalizedXavierWeight(
+						bias_weight_dim, 
+						self.layer_sizes[layer_index][0], 
+						self.layer_sizes[layer_index + 1][0]
+					)
+
+			elif layer_index == len(self.layer_sizes) - 1:
+				new_weight = WeightInitializer().initNormalizedXavierWeight(
+						bias_weight_dim, 
+						self.layer_sizes[layer_index][0],
+						0
+					)
+	
+			new_bias_weight_set.append(new_weight)
+
+		return new_bias_weight_set
+
