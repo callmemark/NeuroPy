@@ -48,7 +48,7 @@ class Math():
 
 
 
-class arrayMethods():
+class ArrayMethods():
 	def __init__(self):
 		pass
 
@@ -88,7 +88,6 @@ class arrayMethods():
 			Return Array
 		"""
 		output_array = []
-		print(self.getShape(multiplicand_arr),  " and ", self.getShape(multiplier_arr))
 
 		for selected_row in multiplicand_arr:
 			new_row = []
@@ -739,7 +738,7 @@ class ForwardPropagation(ActivationFunction):
 			Returns (Array) : The ouput of the this layer
 		"""
 		weighted_sum = self.getWeightedSum(input_value, weight_value)
-		biased_weighted_sum = Array(weighted_sum).addArray(arrayMethods().flatten(bias_weight))
+		biased_weighted_sum = Array(weighted_sum).addArray(ArrayMethods().flatten(bias_weight))
 		result = self.neuronActivation(biased_weighted_sum)
 
 		return Array(result)
@@ -802,7 +801,7 @@ class ForwardPropagation(ActivationFunction):
 
 
 
-class Backpropagation(arrayMethods, Array):
+class BackPropagation(ArrayMethods, Array):
 	def __init__(self, learning_rate = -0.01):
 		"""
 			This class handles the backpropagation acalculation methods
@@ -938,3 +937,40 @@ class Backpropagation(arrayMethods, Array):
 		e = 1 / 3 * arr_sum
 
 		return e
+
+
+
+
+
+class CreateNetwork(ForwardPropagation, BackPropagation):
+	def __init__(self, input_size, hidden_layer_size_arr):
+		super().__init__()
+
+		self.input_size = input_size
+		self.hidden_layer_size_arr = hidden_layer_size_arr
+
+		self.layer_sizes = self.initailizeLayerSizes()
+		self.weights_set = []
+
+
+	def initailizeLayerSizes(self):
+		layer_sizes = []
+
+		for layer_index in range(len(self.hidden_layer_size_arr)):
+			current_layer_size = self.hidden_layer_size_arr[layer_index]
+
+
+			if layer_index == 0:
+				new_layer = [current_layer_size, self.input_size]
+			elif layer_index != 0 :
+				new_layer = [current_layer_size, self.hidden_layer_size_arr[layer_index - 1]]
+
+			layer_sizes.append(new_layer)
+
+		return layer_sizes
+
+
+	def initializeNetworkWeights(self):
+		pass
+		#for layer_index in range(len(self.layer_sizes)):
+		#	new_weight = WeightInitializer().initNormalizedXavierWeight(layer_index[layer_index], layer_index[layer_index][0], layer_index[layer_index + 1][0])
