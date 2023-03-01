@@ -10,6 +10,10 @@ Description: Contains class to create simple but expandable neural network from 
 
 from random import uniform
 
+try:
+	from tqdm import tqdm
+except:
+	raise Exception("Missing required library tqdm: please install tqdm via 'pip install tqdm'")
 
 
 
@@ -945,57 +949,62 @@ class BackPropagation(ArrayMethods, Array):
 
 
 class CreateNetwork(ForwardPropagation, BackPropagation):
-	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01):
+	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01, weight_initializer = "xavierweight"):
 		super().__init__()
 		self.learning_rate = learning_rate
 		self.input_size = input_size
 		self.hidden_layer_size_arr = hidden_layer_size_arr
+		self.weight_initializer = weight_initializer
 
 		self.layer_sizes = self.initailizeLayerSizes()
 		self.weights_set = self.initializeLayerWeights()
 		self.bias_weight_set = self.initializeBiasedWeights()
 		self.mean_square_error_log = []
+		self.batch_array = []
+		self.answer_key_batch_array = []
 
 
-
-	def fit(self, train_data_arr, answer_sheet_arr, learn_cycle, epoch):
-		print("Fitting Model with ", len(self.layer_sizes) - 1, " Hidden Layers and have a total of ", Array(self.hidden_layer_size_arr).sum(), " neurons")
+	def fit(self, train_data_arr, answer_sheet_arr, epoch, batch_size):
+		print("Fitting Model with ", len(self.layer_sizes) - 1, " Hidden Layers and have a total of ", Array(self.hidden_layer_size_arr).sum(), " neurons, Training will take ", (len(train_data_arr) * batch_size * epoch), " amount of loop")
 		if len(train_data_arr) != len(answer_sheet_arr):
 			raise ValueError("Error on fitting data. Training data and Answer sheet don't have equal lenght")
 
+		network_layer_lenght = len(self.layer_sizes)
 
-		network_layer = len(self.layer_sizes)
-		for cycle in range(learn_cycle): 
-			for training_data_index in range(len(train_data_arr)):
-				for training_epoch in range(epoch): 
-					layer_input = train_data_arr[training_data_index]
+		self.batch_array, self.answer_key_batch_array = self.devideBatches(train_data_arr, answer_sheet_arr, batch_size)
+
+		for _ in tqdm(range(epoch)):
+			for training_batch_data_index in range(len(self.batch_array)):
+				current_training_batch = self.batch_array[training_batch_data_index]
+				current_answer_key_batch = self.answer_key_batch_array[training_batch_data_index]
+
+				for training_data_index in range(len(current_training_batch)):
+					layer_input = current_training_batch[training_data_index]
 					layer_output_arr = []
 
 					if len(layer_input) != self.input_size:
 						raise ValueError("The training data and the expected input of the network are not equal")
 
-					if len(answer_sheet_arr[training_data_index]) != self.layer_sizes[-1][0]:
+					if len(current_answer_key_batch[training_data_index]) != self.layer_sizes[-1][0]:
 						raise ValueError("The answer key size and the networks final layer size are not equal")
 
-					
 					## Forward propagation ##
-					for layer_index in range(network_layer):
+					for layer_index in range(network_layer_lenght):
 						layer_ouput = self.createLayer(layer_input, self.weights_set[layer_index], self.bias_weight_set[layer_index])
 						layer_output_arr.append(layer_ouput)
 						layer_input = layer_ouput
 
 
-					mean_square_error = self.getMeanSquaredError(layer_output_arr[-1], answer_sheet_arr[training_data_index])
+					mean_square_error = self.getMeanSquaredError(layer_output_arr[-1], current_answer_key_batch[training_data_index])
 					self.mean_square_error_log.append(mean_square_error)
 
+
 					## Back propagation ##
-					final_layer_neuron_strenght = self.getFLayerNeuronStrenght(layer_output_arr[-1], answer_sheet_arr[training_data_index])
+					final_layer_neuron_strenght = self.getFLayerNeuronStrenght(layer_output_arr[-1], current_answer_key_batch[training_data_index])
 					layer_neuron_strenght = final_layer_neuron_strenght
 
 
-
-
-					for layer_index in range(network_layer - 1, -1, -1):
+					for layer_index in range(network_layer_lenght - 1, -1, -1):
 						if layer_index != 0:
 							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, layer_output_arr[layer_index - 1])
 							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
@@ -1013,7 +1022,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 							layer_neuron_strenght = new_layer_neuron_strenght
 
 						elif layer_index == 0:
-							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, train_data_arr[training_data_index])
+							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, current_training_batch[training_data_index])
 							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
 							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
 
@@ -1027,7 +1036,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 							break
 
 
-
 	def predict(self, data):
 		network_layer = len(self.layer_sizes)
 		layer_output_arr = []
@@ -1039,7 +1047,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			layer_input = layer_ouput
 
 		return layer_output_arr[-1]
-
 
 
 	def initailizeLayerSizes(self):
@@ -1060,19 +1067,24 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 	def initializeLayerWeights(self):
 		new_weight_set = []
 		for layer_index in range(len(self.layer_sizes)):
-			if layer_index != len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						self.layer_sizes[layer_index], 
-						self.layer_sizes[layer_index][0], 
-						self.layer_sizes[layer_index + 1][0]
-					)
-			
-			elif layer_index == len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						self.layer_sizes[layer_index], 
-						self.layer_sizes[layer_index][0],
-						0
-					)
+			if self.weight_initializer == "xavierweight":
+				if layer_index != len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							self.layer_sizes[layer_index], 
+							self.layer_sizes[layer_index][0], 
+							self.layer_sizes[layer_index + 1][0]
+						)
+				
+				elif layer_index == len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							self.layer_sizes[layer_index], 
+							self.layer_sizes[layer_index][0],
+							0
+						)
+
+			elif self.weight_initializer == "simple":
+				new_weight = WeightInitializer().intializeWeight(self.layer_sizes[layer_index])
+
 
 			new_weight_set.append(new_weight)
 
@@ -1086,21 +1098,43 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		for layer_index in range(len(self.layer_sizes)):
 			bias_weight_dim = [1, self.layer_sizes[layer_index][0]]
 
-			if layer_index != len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						bias_weight_dim, 
-						self.layer_sizes[layer_index][0], 
-						self.layer_sizes[layer_index + 1][0]
-					)
+			if self.weight_initializer == "xavierweight":
+				if layer_index != len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							bias_weight_dim, 
+							self.layer_sizes[layer_index][0], 
+							self.layer_sizes[layer_index + 1][0]
+						)
 
-			elif layer_index == len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						bias_weight_dim, 
-						self.layer_sizes[layer_index][0],
-						0
-					)
+				elif layer_index == len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							bias_weight_dim, 
+							self.layer_sizes[layer_index][0],
+							0
+						)
+
+
+			elif self.weight_initializer == "simple":
+				new_weight = WeightInitializer().intializeWeight(bias_weight_dim)
+
 	
 			new_bias_weight_set.append(new_weight)
 
 		return new_bias_weight_set
 
+
+
+	def devideBatches(self, train_data_arr, answer_key_arr, batch_size):
+		test_data_lenght = len(train_data_arr)
+
+		if test_data_lenght < batch_size:
+			raise ValueError("Bacth size cannot be grater that the size of the training data")
+
+		test_data_batch_array = []
+		answer_key_batch_array = []
+
+		for index in range(0, test_data_lenght, batch_size):
+			test_data_batch_array.append(train_data_arr[index: batch_size + index])
+			answer_key_batch_array.append(answer_key_arr[index: batch_size + index])
+
+		return test_data_batch_array, answer_key_batch_array
