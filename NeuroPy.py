@@ -318,6 +318,19 @@ class ArrayMethods():
 		return resulting_arr
 
 
+	def matixScalaMultiply(self, matrix, scalar_multiplier):
+		output_array = []
+
+		for row in matrix:
+			col_val_sum = []
+			for col_val in row:
+				col_val_sum.append(col_val * scalar_multiplier)
+
+			output_array.append(col_val_sum)
+
+		return Array(output_array)
+
+
 
 
 
@@ -537,6 +550,21 @@ class Array(list):
 			sum_arry.append(self[index] + addends_arr[index])
 
 		return Array(sum_arry)
+
+
+
+	def vectorMultiply(self, multiplier_vector):
+		output_vector = []
+
+		for value in self:
+			row_vector = []
+			for element in multiplier_vector:
+				row_vector.append(value * element)
+
+			output_vector.append(row_vector)
+
+		return Array(output_vector)
+
 
 
 
@@ -841,6 +869,12 @@ class BackPropagation(ArrayMethods, Array):
 		return Array(returned_value)
 
 
+	def L2RegularizationWeightAdj(self, learning_rate, layer_strenght, prev_layer_output, l2_lambda, intial_weight):
+		final_output = self.matrixAddition(layer_strenght.vectorMultiply(prev_layer_output.multiply(learning_rate)), self.matixScalaMultiply(intial_weight, l2_lambda))
+		
+		return Array(final_output)
+
+
 	def calculateWeightAdjustment(self, proceding_neuron_strenght, preceding_neuron_output):
 		""" 
 			Calculate and return an array of floats that is intended to use for calibrating the weights of the 
@@ -982,6 +1016,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 					layer_input = current_training_batch[training_data_index]
 					layer_output_arr = []
 
+					print("Training_data : ", layer_input, " Answer: ", current_answer_key_batch[training_data_index])
 					if len(layer_input) != self.input_size:
 						raise ValueError("The training data and the expected input of the network are not equal")
 
