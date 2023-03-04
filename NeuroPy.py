@@ -10,6 +10,10 @@ Description: Contains class to create simple but expandable neural network from 
 
 from random import uniform
 
+try:
+	from tqdm import tqdm
+except:
+	raise Exception("Missing required library tqdm: please install tqdm via 'pip install tqdm'")
 
 
 
@@ -314,6 +318,19 @@ class ArrayMethods():
 		return resulting_arr
 
 
+	def matixScalaMultiply(self, matrix, scalar_multiplier):
+		output_array = []
+
+		for row in matrix:
+			col_val_sum = []
+			for col_val in row:
+				col_val_sum.append(col_val * scalar_multiplier)
+
+			output_array.append(col_val_sum)
+
+		return Array(output_array)
+
+
 
 
 
@@ -536,6 +553,21 @@ class Array(list):
 
 
 
+	def vectorMultiply(self, multiplier_vector):
+		output_vector = []
+
+		for value in self:
+			row_vector = []
+			for element in multiplier_vector:
+				row_vector.append(value * element)
+
+			output_vector.append(row_vector)
+
+		return Array(output_vector)
+
+
+
+
 
 
 
@@ -672,7 +704,7 @@ class ActivationFunction():
 		self.E = 2.71
 
 
-	def sigmoidFunction(self, x):
+	def sigmoidFunction(self, x, round_place = 2):
 		"""
 			This method perform a sigmoid function calculation
 
@@ -682,8 +714,19 @@ class ActivationFunction():
 
 			Returns: float
 		"""
-		result = 1 / (1 + self.E ** -x)
-		return result
+		try:
+			x = round(x, round_place)
+			result = round(1 / (1 + self.E ** -x), round_place)
+
+			return round(result, round_place)
+		except OverflowError:
+			err_msg = "Error in function sigmoidFunction where result is too large, with arguments: X as " + str(x)
+			raise Exception(err_msg)
+			
+
+
+
+		
 
 
 	def argMax(selc, arr):
@@ -746,10 +789,11 @@ class ForwardPropagation(ActivationFunction):
 			Handles neuron activation
 
 			Arguments: 
-			input_array (Array) 	: 	Expects the array of weighted sum 
+			input_array (Matrix) 	: 	Expects the matrix of weighted sum 
 			
-			Returns (Array)
+			Returns (Matrix)
 		"""
+
 		result = []
 		for input_val in input_array:
 			result.append(self.sigmoidFunction(input_val))
@@ -823,7 +867,7 @@ class BackPropagation(ArrayMethods, Array):
 		return Array(returned_value)
 
 
-	def applyWeightAdjustment(self, initial_weight, weight_adjustment):
+	def applyWeightAdjustment(self, initial_weight, weight_adjustment, operation = "+"):
 		"""
 			Apply the adjustments of the weights to the initial weight to update its value by getting the sum of the two array
 
@@ -833,8 +877,33 @@ class BackPropagation(ArrayMethods, Array):
 
 			Returns: Array
 		"""
-		returned_value = self.matrixAddition(initial_weight, weight_adjustment)
+		if operation == "+":
+			returned_value = self.matrixAddition(initial_weight, weight_adjustment)
+		elif operation == "-":
+			returned_value = self.matrixSubtract(initial_weight, weight_adjustment)
+
 		return Array(returned_value)
+
+
+
+	def L2RegularizationWeightAdj(self, learning_rate, layer_strenght, prev_layer_output, l2_lambda, intial_weight):
+		"""
+			Apply the l2 regularization when calculating the weights of the layers
+
+			Aguemtns:
+			learning_rate (float)			: The models learning rate
+			layer_strenght (Vector)			: The strenght of the hidden layer recieving from the weihts being update
+			prev_layer_output (Matrix)		: The output of the previos layer
+			l2_lambda (float) 				: L2 penalty
+			intial_weight (matrix)			: The initial weight
+
+			return matrix with values representing the amount to change the weight
+ 
+		"""
+		final_output = self.matrixAddition(Array(layer_strenght).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), self.matixScalaMultiply(intial_weight, l2_lambda))
+		
+		return Array(final_output)
+
 
 
 	def calculateWeightAdjustment(self, proceding_neuron_strenght, preceding_neuron_output):
@@ -945,87 +1014,153 @@ class BackPropagation(ArrayMethods, Array):
 
 
 class CreateNetwork(ForwardPropagation, BackPropagation):
-	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01):
+	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01, weight_initializer = "xavierweight", regularization_method = "none", l2_penalty = 0.01):
 		super().__init__()
 		self.learning_rate = learning_rate
 		self.input_size = input_size
 		self.hidden_layer_size_arr = hidden_layer_size_arr
+		self.weight_initializer = weight_initializer
+
+		self.l2_penalty = l2_penalty
+		self.regularization_method = regularization_method
 
 		self.layer_sizes = self.initailizeLayerSizes()
+
 		self.weights_set = self.initializeLayerWeights()
 		self.bias_weight_set = self.initializeBiasedWeights()
+
 		self.mean_square_error_log = []
+		self.batch_array = []
+		self.answer_key_batch_array = []
 
 
 
-	def fit(self, train_data_arr, answer_sheet_arr, learn_cycle, epoch):
-		print("Fitting Model with ", len(self.layer_sizes) - 1, " Hidden Layers and have a total of ", Array(self.hidden_layer_size_arr).sum(), " neurons")
-		if len(train_data_arr) != len(answer_sheet_arr):
-			raise ValueError("Error on fitting data. Training data and Answer sheet don't have equal lenght")
+	def fit(self, training_data, labeld_outputs, epoch, batch_size):
+		"""
+			
+			Arguments: 
+			training_data (Matrix)			: Matrix of the training data
+			labeld_outputs (Matrix)			: Matrix of the labled output of the training data
+			epoch (scalar int)				: The amount of loop i will do to look over the entire training data
+			batch_size (scalar int)			: The amount of batches of training data to be trained
+
+		"""
+		# print summary of the model
+		print("Fitting Arguments: \n Epoch: ", epoch, "\n Batch size: ", batch_size)
+		print("Network Architecture \n Layers: ", len(self.layer_sizes), "\n Shape: ", self.layer_sizes)
 
 
-		network_layer = len(self.layer_sizes)
-		for cycle in range(learn_cycle): 
-			for training_data_index in range(len(train_data_arr)):
-				for training_epoch in range(epoch): 
-					layer_input = train_data_arr[training_data_index]
-					layer_output_arr = []
+		# Devide the training data in batches
+		self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
 
-					if len(layer_input) != self.input_size:
-						raise ValueError("The training data and the expected input of the network are not equal")
+		# get the value of hopw many layers the network have
+		layer_count = len(self.layer_sizes)
 
-					if len(answer_sheet_arr[training_data_index]) != self.layer_sizes[-1][0]:
-						raise ValueError("The answer key size and the networks final layer size are not equal")
+		# get how many batches is needed to loop through
+		batches_count = len(self.batch_array)
+		
 
+		for _ in tqdm(range(epoch)):
+			for training_batch_set_index in range(batches_count):
+				# The set of trainig data in the batch array
+				training_batch = self.batch_array[training_batch_set_index]
+				# The answer key or labeled ouput of the batch
+				batch_key = self.answer_key_batch_array[training_batch_set_index]
+
+				# loop through the entire data inside the batch 
+				count_data_in_batch = len(training_batch)
+				for data_index in range(count_data_in_batch):
+					# get the input data for the current loop
+					input_data = training_batch[data_index]
+					# get the labeld output of the input data
+					input_labeld_data = batch_key[data_index]
+
+					#### FORWARD PROPAGATION ####
+					# holds the value of the ouputs of the previous layer the training_data variable is added intialy as it would 
+					# represent as the final ouput for the first layer in back propagation
+					layer_ouputs_matrix = []
 					
-					## Forward propagation ##
-					for layer_index in range(network_layer):
-						layer_ouput = self.createLayer(layer_input, self.weights_set[layer_index], self.bias_weight_set[layer_index])
-						layer_output_arr.append(layer_ouput)
-						layer_input = layer_ouput
+					# The input of the current layer
+					current_layer_input = input_data
+
+					# Loop through the entire layer of the neural network
+					for layer_index in range(layer_count):
+						# create a layer where neuron activation and other transformation will handle
+						layer_ouput = self.createLayer(
+										input_value = current_layer_input, 
+										weight_value = self.weights_set[layer_index], 
+										bias_weight = self.bias_weight_set[layer_index]
+										)
+						# Append the output of the layer for backpropagation
+						layer_ouputs_matrix.append(layer_ouput)
+						# update the input for the next layer
+						current_layer_input = layer_ouput
 
 
-					mean_square_error = self.getMeanSquaredError(layer_output_arr[-1], answer_sheet_arr[training_data_index])
+					#### calculate Loss functions ####
+					mean_square_error = self.getMeanSquaredError(
+						 						ouput = layer_ouputs_matrix[-1], 
+						 						labeld_output = input_labeld_data
+						 						)
+					# Append the result to the error log
 					self.mean_square_error_log.append(mean_square_error)
 
-					## Back propagation ##
-					final_layer_neuron_strenght = self.getFLayerNeuronStrenght(layer_output_arr[-1], answer_sheet_arr[training_data_index])
-					layer_neuron_strenght = final_layer_neuron_strenght
 
+					#### BACK PROPAGATION #####
+					# Strenght of the current layer in loop
+					delta_h = self.getFLayerNeuronStrenght(
+											final_output = layer_ouputs_matrix[-1], 
+											argmaxed_final_output = input_labeld_data
+										)
 
+					for layer_index in range(len(layer_ouputs_matrix) - 1, -1, -1):
+						## check if the current layer in iteration is a hidden layer ##
+						self.bias_weight_set[layer_index] = self.getAdjustedBiasdWeights(delta_h)
 
-
-					for layer_index in range(network_layer - 1, -1, -1):
 						if layer_index != 0:
-							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, layer_output_arr[layer_index - 1])
-							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
-							new_layer_neuron_strenght = self.getHLayerNeuronStrength(layer_output_arr[layer_index - 1], adjusted_weight, layer_neuron_strenght)
-							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
+							weight_adjustment_matrix = self.L2RegularizationWeightAdj(
+															learning_rate = self.learning_rate, 
+															layer_strenght = delta_h, 
+															prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
+															l2_lambda = self.l2_penalty, 
+															intial_weight = self.weights_set[layer_index]
+														)
 
-							if len(self.bias_weight_set[layer_index][0]) != len(adjusted_bias_weight):
-								raise Exception("Internal Error id: 001: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
-							if len(self.weights_set[layer_index]) != len(adjusted_weight):
-								raise ValueError("Internal Error id: 002: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
+							weight_update = self.applyWeightAdjustment(
+													initial_weight = self.weights_set[layer_index], 
+													weight_adjustment = weight_adjustment_matrix, 
+													operation = "-"
+												)
+							
+							self.weights_set[layer_index] = weight_update
 
-							self.bias_weight_set[layer_index] = [adjusted_bias_weight]
-							self.weights_set[layer_index] = adjusted_weight
+							layer_strenght = self.getHLayerNeuronStrength(
+										preceding_neuron_output_arr = layer_ouputs_matrix[layer_index - 1], 
+										weight = weight_update, 
+										proceding_neuron_output_arr = delta_h
+									)
 
-							layer_neuron_strenght = new_layer_neuron_strenght
+							delta_h = layer_strenght
 
+						## check if the current layer in interation is the main input layer ##
 						elif layer_index == 0:
-							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, train_data_arr[training_data_index])
-							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
-							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
+							weight_adjustment_matrix = self.L2RegularizationWeightAdj(
+															learning_rate = self.learning_rate, 
+															layer_strenght = delta_h, 
+															prev_layer_output = input_data, 
+															l2_lambda = self.l2_penalty, 
+															intial_weight = self.weights_set[layer_index]
+														)
 
-							if len(self.bias_weight_set[layer_index][0]) != len(adjusted_bias_weight):
-								raise ValueError("Internal Error id: 003: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
-							if len(self.weights_set[layer_index]) != len(adjusted_weight):
-								raise ValueError("Internal Error id: 004: This error should not occur unless a library bug exist, Please report this on NeuroPy github page")
 
-							self.bias_weight_set[layer_index] = [adjusted_bias_weight]
-							self.weights_set[layer_index] = adjusted_weight
-							break
+							weight_update = self.applyWeightAdjustment(
+													initial_weight = self.weights_set[layer_index], 
+													weight_adjustment = weight_adjustment_matrix, 
+													operation = "-"
+												)
 
+							self.weights_set[layer_index] = weight_update
+							
 
 
 	def predict(self, data):
@@ -1060,19 +1195,24 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 	def initializeLayerWeights(self):
 		new_weight_set = []
 		for layer_index in range(len(self.layer_sizes)):
-			if layer_index != len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						self.layer_sizes[layer_index], 
-						self.layer_sizes[layer_index][0], 
-						self.layer_sizes[layer_index + 1][0]
-					)
-			
-			elif layer_index == len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						self.layer_sizes[layer_index], 
-						self.layer_sizes[layer_index][0],
-						0
-					)
+			if self.weight_initializer == "xavierweight":
+				if layer_index != len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							self.layer_sizes[layer_index], 
+							self.layer_sizes[layer_index][0], 
+							self.layer_sizes[layer_index + 1][0]
+						)
+				
+				elif layer_index == len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							self.layer_sizes[layer_index], 
+							self.layer_sizes[layer_index][0],
+							0
+						)
+
+			elif self.weight_initializer == "simple":
+				new_weight = WeightInitializer().intializeWeight(self.layer_sizes[layer_index])
+
 
 			new_weight_set.append(new_weight)
 
@@ -1086,21 +1226,43 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		for layer_index in range(len(self.layer_sizes)):
 			bias_weight_dim = [1, self.layer_sizes[layer_index][0]]
 
-			if layer_index != len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						bias_weight_dim, 
-						self.layer_sizes[layer_index][0], 
-						self.layer_sizes[layer_index + 1][0]
-					)
+			if self.weight_initializer == "xavierweight":
+				if layer_index != len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							bias_weight_dim, 
+							self.layer_sizes[layer_index][0], 
+							self.layer_sizes[layer_index + 1][0]
+						)
 
-			elif layer_index == len(self.layer_sizes) - 1:
-				new_weight = WeightInitializer().initNormalizedXavierWeight(
-						bias_weight_dim, 
-						self.layer_sizes[layer_index][0],
-						0
-					)
+				elif layer_index == len(self.layer_sizes) - 1:
+					new_weight = WeightInitializer().initNormalizedXavierWeight(
+							bias_weight_dim, 
+							self.layer_sizes[layer_index][0],
+							0
+						)
+
+
+			elif self.weight_initializer == "simple":
+				new_weight = WeightInitializer().intializeWeight(bias_weight_dim)
+
 	
 			new_bias_weight_set.append(new_weight)
 
 		return new_bias_weight_set
 
+
+
+	def devideBatches(self, train_data_arr, answer_key_arr, batch_size):
+		test_data_lenght = len(train_data_arr)
+
+		if test_data_lenght < batch_size:
+			raise ValueError("Bacth size cannot be grater that the size of the training data")
+
+		test_data_batch_array = []
+		answer_key_batch_array = []
+
+		for index in range(0, test_data_lenght, batch_size):
+			test_data_batch_array.append(train_data_arr[index: batch_size + index])
+			answer_key_batch_array.append(answer_key_arr[index: batch_size + index])
+
+		return test_data_batch_array, answer_key_batch_array
