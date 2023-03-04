@@ -1046,8 +1046,8 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 		"""
 		# print summary of the model
-		print("Fitting Arguments: \n Epoch: ", epoch, "\n Batch size: ", batch_size)
-		print("Network Architecture \n Layers: ", len(self.layer_sizes), "\n Shape: ", self.layer_sizes)
+		self.printNetworkSummary(epoch, batch_size)
+		
 
 
 		# Devide the training data in batches
@@ -1266,3 +1266,24 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			answer_key_batch_array.append(answer_key_arr[index: batch_size + index])
 
 		return test_data_batch_array, answer_key_batch_array
+
+
+	def printNetworkSummary(self, epoch, batch_size):
+		tab_distance = 4
+		tab = "...." * tab_distance
+		print("#" * 34, "Network Summary", "#" * 34)
+		print("Fitting model with ", epoch, " epoch and ", batch_size, " Batch size")
+
+		print("\nNetwork Architecture: ")
+		print("	Learning Rate:", tab, tab, tab, self.learning_rate)
+		print("	Regularization:", tab, tab, tab, self.regularization_method)
+
+		if self.regularization_method == "L2":
+			print("	L2-Penalty:		", tab, tab, tab,self.l2_penalty)
+
+
+		print("Layers: ")
+		for _layer_index in range(len(self.layer_sizes)):
+			print("	Layer: ", _layer_index + 1,  "	Activation Function: Sigmoid Function", tab, self.layer_sizes[_layer_index][0], " Neurons")
+
+		print("\nFitting Progress:")
