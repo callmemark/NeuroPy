@@ -715,7 +715,8 @@ class ActivationFunction():
 			Returns: float
 		"""
 		result = 1 / (1 + self.E ** -x)
-		return result
+
+		return round(result, 2)
 
 
 	def argMax(selc, arr):
@@ -869,10 +870,25 @@ class BackPropagation(ArrayMethods, Array):
 		return Array(returned_value)
 
 
+
 	def L2RegularizationWeightAdj(self, learning_rate, layer_strenght, prev_layer_output, l2_lambda, intial_weight):
-		final_output = self.matrixAddition(layer_strenght.vectorMultiply(prev_layer_output.multiply(learning_rate)), self.matixScalaMultiply(intial_weight, l2_lambda))
+		"""
+			Apply the l2 regularization when calculating the weights of the layers
+
+			Aguemtns:
+			learning_rate (float)			: The models learning rate
+			layer_strenght (Vector)			: The strenght of the hidden layer recieving from the weihts being update
+			prev_layer_output (Matrix)		: The output of the previos layer
+			l2_lambda (float) 				: L2 penalty
+			intial_weight (matrix)			: The initial weight
+
+			return matrix with values representing the amount to change the weight
+ 
+		"""
+		final_output = self.matrixAddition(Array(layer_strenght).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), self.matixScalaMultiply(intial_weight, l2_lambda))
 		
 		return Array(final_output)
+
 
 
 	def calculateWeightAdjustment(self, proceding_neuron_strenght, preceding_neuron_output):
@@ -983,12 +999,15 @@ class BackPropagation(ArrayMethods, Array):
 
 
 class CreateNetwork(ForwardPropagation, BackPropagation):
-	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01, weight_initializer = "xavierweight"):
+	def __init__(self, input_size, hidden_layer_size_arr, learning_rate = -0.01, weight_initializer = "xavierweight", regularization_method = "none", l2_penalty = 0.01):
 		super().__init__()
 		self.learning_rate = learning_rate
 		self.input_size = input_size
 		self.hidden_layer_size_arr = hidden_layer_size_arr
 		self.weight_initializer = weight_initializer
+
+		self.l2_penalty = l2_penalty
+		self.regularization_method = regularization_method
 
 		self.layer_sizes = self.initailizeLayerSizes()
 		self.weights_set = self.initializeLayerWeights()
@@ -996,6 +1015,8 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		self.mean_square_error_log = []
 		self.batch_array = []
 		self.answer_key_batch_array = []
+
+
 
 
 	def fit(self, train_data_arr, answer_sheet_arr, epoch, batch_size):
@@ -1041,7 +1062,18 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 					for layer_index in range(network_layer_lenght - 1, -1, -1):
 						if layer_index != 0:
-							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, layer_output_arr[layer_index - 1])
+							if self.regularization_method == "none":
+								calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, layer_output_arr[layer_index - 1])
+							elif self.regularization_method == "L2":
+								calculated_weight_adjustment = self.L2RegularizationWeightAdj(
+																	self.learning_rate, 
+																	layer_neuron_strenght, 
+																	layer_output_arr[layer_index - 1], 
+																	self.l2_penalty, 
+																	self.weights_set[layer_index]
+																	)
+
+
 							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
 							new_layer_neuron_strenght = self.getHLayerNeuronStrength(layer_output_arr[layer_index - 1], adjusted_weight, layer_neuron_strenght)
 							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
@@ -1056,8 +1088,19 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 							layer_neuron_strenght = new_layer_neuron_strenght
 
+
 						elif layer_index == 0:
-							calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, current_training_batch[training_data_index])
+							if self.regularization_method == "none":
+								calculated_weight_adjustment = self.calculateWeightAdjustment(layer_neuron_strenght, current_training_batch[training_data_index])
+							elif self.regularization_method == "L2":
+								calculated_weight_adjustment = self.L2RegularizationWeightAdj(
+																	self.learning_rate, 
+																	layer_neuron_strenght, 
+																	current_training_batch[training_data_index], 
+																	self.l2_penalty, 
+																	self.weights_set[layer_index]
+																	)
+
 							adjusted_weight =  self.applyWeightAdjustment(self.weights_set[layer_index], calculated_weight_adjustment)
 							adjusted_bias_weight = self.getAdjustedBiasdWeights(layer_neuron_strenght)
 
@@ -1071,6 +1114,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 							break
 
 
+
 	def predict(self, data):
 		network_layer = len(self.layer_sizes)
 		layer_output_arr = []
@@ -1082,6 +1126,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			layer_input = layer_ouput
 
 		return layer_output_arr[-1]
+
 
 
 	def initailizeLayerSizes(self):
