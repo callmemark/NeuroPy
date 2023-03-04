@@ -1045,6 +1045,11 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			batch_size (scalar int)			: The amount of batches of training data to be trained
 
 		"""
+		# print summary of the model
+		print("Fitting Arguments: \n Epoch: ", epoch, "\n Batch size: ", batch_size)
+		print("Network Architecture \n Layers: ", len(self.layer_sizes), "\n Shape: ", self.layer_sizes)
+
+
 		# Devide the training data in batches
 		self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
 
