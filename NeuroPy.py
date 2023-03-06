@@ -890,7 +890,8 @@ class BackPropagation(ArrayMethods, Array):
 			Returns: Array
 
 		"""
-		returned_value = Array(self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)).squared()
+		#returned_value = Array(self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)).squared()
+		returned_value = self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)
 		return Array(returned_value)
 
 
@@ -927,31 +928,41 @@ class BackPropagation(ArrayMethods, Array):
 			return matrix with values representing the amount to change the weight
  
 		"""
-		final_output = self.matrixAddition(Array(layer_strenght).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), self.matixScalaMultiply(intial_weight, l2_lambda))
+		weight_adjustment_matrix = self.matrixAddition(
+										Array(layer_strenght).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), 
+										self.matixScalaMultiply(intial_weight, l2_lambda)
+									)
 		
-		return Array(final_output)
+		weight_matrix_update = self.applyWeightAdjustment(
+								initial_weight = intial_weight, 
+								weight_adjustment = weight_adjustment_matrix, 
+								operation = "-"
+							)
+
+		return Array(weight_matrix_update)
 
 
-
-	def calculateWeightAdjustment(self, proceding_neuron_strenght, preceding_neuron_output):
+	# rename from calculateWeightAdjustment to updateLayerWeight
+	def updateLayerWeight(self, succeeding_layer_neuron_strenght, preceding_neuron_output, initial_weight_matrix):
 		""" 
 			Calculate and return an array of floats that is intended to use for calibrating the weights of the 
 			Neural network
 			
 			Arguments:
-			proceding_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
-			preceding_neuron_output (List / Array)		:	The layer of neurons that is first to recieve data relative to forward propagation direction
-			
+			succeeding_layer_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
+			preceding_neuron_output (List / Array)			:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			initial_weight_matrix (list / Matrix)			:	The initial weight without the adjustments
+
 			Returns: Array
 
 			formula:
-			weight_ajustments = -learning_rate * [matrixMultiply(proceding_neuron_strenght, preceding_neuron_output)]
+			weight_ajustments = -learning_rate * [matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)]
 
 		"""
 
-		neighbor_neuron_dprod = self.matrixMultiply(proceding_neuron_strenght, preceding_neuron_output)
+		neighbor_neuron_dprod = self.matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)
 
-		final_weight = []
+		weight_adjustment_matrix = []
 		for selected_row in neighbor_neuron_dprod:
 			result_row = []
 
@@ -959,9 +970,17 @@ class BackPropagation(ArrayMethods, Array):
 				product = self.learning_rate * col_val
 				result_row.append(product)
 
-			final_weight.append(result_row)
+			weight_adjustment_matrix.append(result_row)
 
-		return Array(final_weight)
+
+		weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = initial_weight_matrix, 
+						weight_adjustment = weight_adjustment_matrix, 
+						operation = "+"
+					)
+
+		return Array(weight_update_matrix)
+
 
 
 	def getHLayerNeuronStrength(self, preceding_neuron_output_arr, weight, proceding_neuron_output_arr):
@@ -1162,34 +1181,23 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 							# if the regularization_method is set to L2 regularization method
 							if self.regularization_method == "L2":
 								# calculate the adjustment needed to the weight with the L2 regualrization equation
-								weight_adjustment_matrix = self.L2RegularizationWeightAdj(
+								weight_update = self.L2RegularizationWeightAdj(
 																learning_rate = self.learning_rate, 
 																layer_strenght = delta_h, 
 																prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
 																l2_lambda = self.l2_penalty, 
 																intial_weight = self.weights_set[layer_index]
 															)
-								# calculate the calculated adjustments needed to the initail weights 
-								weight_update = self.applyWeightAdjustment(
-														initial_weight = self.weights_set[layer_index], 
-														weight_adjustment = weight_adjustment_matrix, 
-														operation = "-"
-													)
 
 							# if there is no regularization method used the the weight is calculated using the sigmoid derivative in calculateWeightAdjustment method
 							elif self.regularization_method == "none":
 								# calculate the adjustment needed to apply to the initial weight
-								weight_adjustment_matrix = self.calculateWeightAdjustment(
-																proceding_neuron_strenght = delta_h, 
-																preceding_neuron_output = layer_ouputs_matrix[layer_index - 1]
-																)
-
-								# calculate the weight adjustment to the initial weight
-								weight_update = self.applyWeightAdjustment(
-														initial_weight = self.weights_set[layer_index], 
-														weight_adjustment = weight_adjustment_matrix, 
-														operation = "+"
+								weight_update = self.updateLayerWeight(
+														succeeding_layer_neuron_strenght = delta_h, 
+														preceding_neuron_output = layer_ouputs_matrix[layer_index - 1], 
+														initial_weight_matrix = self.weights_set[layer_index]
 													)
+
 
 							# Update the layer weight with the new calculated weight
 							self.weights_set[layer_index] = weight_update
@@ -1206,28 +1214,19 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						## check if the current layer in interation is the main input layer ##
 						elif layer_index == 0:
 							if self.regularization_method == "L2":
-								weight_adjustment_matrix = self.L2RegularizationWeightAdj(
+								weight_update = self.L2RegularizationWeightAdj(
 																learning_rate = self.learning_rate, 
 																layer_strenght = delta_h, 
 																prev_layer_output = input_data, 
 																l2_lambda = self.l2_penalty, 
 																intial_weight = self.weights_set[layer_index]
 															)
-								weight_update = self.applyWeightAdjustment(
-														initial_weight = self.weights_set[layer_index], 
-														weight_adjustment = weight_adjustment_matrix, 
-														operation = "-"
-													)
+								
 							elif self.regularization_method == "none":
-								weight_adjustment_matrix = self.calculateWeightAdjustment(
-																proceding_neuron_strenght = delta_h, 
-																preceding_neuron_output = input_data
-																)
-
-								weight_update = self.applyWeightAdjustment(
-														initial_weight = self.weights_set[layer_index], 
-														weight_adjustment = weight_adjustment_matrix, 
-														operation = "+"
+								weight_update = self.updateLayerWeight(
+														succeeding_layer_neuron_strenght = delta_h, 
+														preceding_neuron_output = input_data, 
+														initial_weight_matrix = self.weights_set[layer_index]
 													)
 
 							self.weights_set[layer_index] = weight_update
