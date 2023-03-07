@@ -6,6 +6,9 @@ Date: February 2, 2023
 
 Description: Contains class to create simple but expandable neural network from scratch.
 
+
+
+
 """
 
 from random import uniform
@@ -55,6 +58,31 @@ class ArrayMethods():
 		pass
 
 
+	def matrixVectorDotProd(self, matrix, vector):
+		"""
+		Calculate the dot product of a vector and a matrix
+
+		Parameters:
+			vector (list): A 1-dimensional list representing a vector.
+			matrix (list): A 2-dimensional list representing a matrix.
+
+		Returns:
+			A vector representing the result of the dot product.
+		"""
+		if len(vector) != len(matrix[0]):
+			raise ValueError("The dimensions of the vector and matrix do not match.")
+
+		result = []
+		for i in range(len(matrix)):
+		    dot_product = 0
+		    for j in range(len(vector)):
+		        dot_product += vector[j] * matrix[i][j]
+		    result.append(dot_product)
+		    
+		return result
+
+
+
 	def matrixMultiply(self, multiplier_arr, arr_to_mult):
 		"""
 			matrix multiplt two array
@@ -81,7 +109,7 @@ class ArrayMethods():
 
 	def matrixVectorMultiply(self, multiplicand_arr, multiplier_arr):
 		"""
-			Calculate dot product of two array
+			multiple a vector to a matrix
 			
 			Argumemts:
 			multiplicand_arr	(2d matrix array) 
@@ -316,7 +344,18 @@ class ArrayMethods():
 		return resulting_arr
 
 
-	def matixScalaMultiply(self, matrix, scalar_multiplier):
+
+	# rename from matixScalaMultiply to matrixScalarMultiply
+	def matrixScalarMultiply(self, matrix, scalar_multiplier):
+		"""
+			Multiple a mtrix to a scalar value
+
+			Arguments:
+			matrix (matrix)					: 	The matrix that will be multiplied
+			scalar_multiplier (Scalar) 		:	The multiplier scalar valuee
+
+			Return (Matrix)
+		"""
 		output_array = []
 
 		for row in matrix:
@@ -553,6 +592,9 @@ class Array(list):
 
 
 	def vectorMultiply(self, multiplier_vector):
+		"""
+		Return: Matrix
+		""" 
 		output_vector = []
 
 		for value in self:
@@ -703,7 +745,6 @@ class ActivationFunction():
 		"""
 		self.E = 2.71
 
-
 	def sigmoidFunction(self, x):
 		"""
 			This method perform a sigmoid function calculation
@@ -719,33 +760,42 @@ class ActivationFunction():
 
 		return result
 
-			
 
-
-
-		
-
-
-	def argMax(selc, arr):
+	def argMax(self, ouput_vector):
 		"""
 			This method search for the maximum value and create a new list where only the maximum value will have a value of 1
 
 			Arguments: 
-			arr(Array) 	: The array that will be transformed into a new array
+			weight_matrix (Matrix) 	: The array that will be transformed into a new array
 			
 			Returns: Array
 		"""
 		output_array = []
 
-		max_value_index = arr.index(max(arr))
+		max_value_index = ouput_vector.index(max(ouput_vector))
 
-		for index in range(len(arr)):
+		for index in range(len(ouput_vector)):
 			if index == max_value_index:
 				output_array.append(1)
 			elif index != max_value_index:
 				output_array.append(0)
 
 		return Array(output_array)
+
+
+
+	def relu(self, input_value):
+		"""
+			Returns the exact input if that input is a positive value
+			
+			input_value (Scalar / float) 		:  value from the weighted sum of the input
+			return (Scalar / float)
+		"""
+		if input_value > 0:
+			return input_value
+		elif input_value <= 0:
+			return 0.0
+
 
 
 
@@ -762,8 +812,8 @@ class ForwardPropagation(ActivationFunction):
 		"""
 		super().__init__()
 
-	# createLayer >> fowardPropagation
-	def fowardPropagation(self, input_value, weight_value, bias_weight):
+
+	def fowardPropagation(self, input_value, weight_value, bias_weight, activation_function):
 		"""
 			Creates a nueral network layer
 
@@ -776,23 +826,46 @@ class ForwardPropagation(ActivationFunction):
 		"""
 		weighted_sum = self.getWeightedSum(input_value, weight_value)
 		biased_weighted_sum = Array(weighted_sum).addArray(ArrayMethods().flatten(bias_weight))
-		result = self.neuronActivation(biased_weighted_sum)
+
+		if activation_function == "sigmoid":
+			result = self.sigmoidNeuronActivation(biased_weighted_sum)
+		elif activation_function == "relu":
+			result = self.reluNeuronActivation(biased_weighted_sum)
 
 		return Array(result)
 
 
-	def neuronActivation(self, input_array):
+
+	def reluNeuronActivation(self, weighted_sum_vector):
+		"""
+			Activated neurons using the relu activation function
+			
+			Arguments: 
+			input_vector (Vector) 	:	the weighted sum
+
+			returns (Vector)
+		"""
+		output_vector = []
+
+		for input_value in weighted_sum_vector:
+			output_vector.append(self.relu(input_value))
+
+		return output_vector
+
+
+
+	def sigmoidNeuronActivation(self, input_vector):
 		"""
 			Handles neuron activation
 
 			Arguments: 
-			input_array (Matrix) 	: 	Expects the matrix of weighted sum 
+			input_vector (Matrix) 	: 	Expects the matrix of weighted sum 
 			
 			Returns (Matrix)
 		"""
 
 		result = []
-		for input_val in input_array:
+		for input_val in input_vector:
 			result.append(self.sigmoidFunction(input_val))
 
 		return result
@@ -839,12 +912,227 @@ class ForwardPropagation(ActivationFunction):
 
 
 
-class BackPropagation(ArrayMethods, Array):
+
+
+
+
+
+
+
+class WeightUpdates():
+	def __init__(self):
+		super().__init__()
+
+
+	def sigmoidWeightCalculation(self, alpha, fwd_l_delta, prev_l_output, init_weight):
+		""" 
+			Calculate and return an array of floats that is intended to use for calibrating the weights of the 
+			Neural network
+			
+			Arguments:
+			succeeding_layer_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
+			preceding_neuron_output (List / Array)			:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			initial_weight_matrix (list / Matrix)			:	The initial weight without the adjustments
+
+			Returns: Array
+
+			formula:
+			weight_ajustments = -learning_rate * [matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)]
+		"""
+
+		neighbor_neuron_dprod = self.matrixMultiply(fwd_l_delta, prev_l_output)
+
+		weight_adjustment_matrix = []
+		for selected_row in neighbor_neuron_dprod:
+			result_row = []
+
+			for col_val in selected_row:
+				product = alpha * col_val
+				result_row.append(product)
+
+			weight_adjustment_matrix.append(result_row)
+
+
+		weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = weight_adjustment_matrix, 
+						operation = "+"
+					)
+
+		return weight_update_matrix
+
+
+
+	def sigmoidL2RegularizationWeightUpdate(self, learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight):
+		"""
+			Apply the l2 regularization when calculating the weights of the layers
+
+			Aguemtns:
+			learning_rate (float)			: The models learning rate
+			delta_n (Vector)				: The strenght of the hidden layer recieving from the weihts being update
+			prev_layer_output (Matrix)		: The output of the sactivation function of the previos layer
+			l2_lambda (float) 				: L2 penalty
+			intial_weight (matrix)			: The initial weight
+
+			return matrix with values representing the amount to change the weight
+ 
+		"""
+
+		# delta_w = alpha * (delta * X.T) + lambda * W
+		delta_w = self.matrixAddition(
+								Array(delta_n).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), 
+								self.matrixScalarMultiply(intial_weight, l2_lambda)
+								)
+		
+
+		# W = W - (alpha * dW + lambda * W)
+		weight_matrix_update = self.matrixSubtract(
+								intial_weight,
+								self.matrixAddition(
+									self.matrixScalarMultiply(delta_w, learning_rate), 
+									self.matrixScalarMultiply(intial_weight, l2_lambda)
+									)
+								) 
+
+		return Array(weight_matrix_update)
+
+
+
+
+
+	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output, init_weight):
+		"""
+			calculate and update the weights without any regularization
+			
+			Equation: 	dW = learning_rate * delta[l] [x] X.T)
+						W = W - (alpha * dw)
+		"""
+		weight_adjustment = self.matrixScalarMultiply(self.matrixMultiply(fwd_l_delta, prev_l_output), learning_rate)
+		weight_update = self.matrixSubtract(init_weight, self.matrixScalarMultiply(weight_adjustment, learning_rate)) 
+
+		return weight_update
+
+
+
+
+	def applyWeightAdjustment(self, initial_weight, weight_adjustment, operation = "+"):
+		"""
+			Apply the adjustments of the weights to the initial weight to update its value by getting the sum of the two array
+
+			Arguments:
+			initial_weight (List / Array)			:	The weights value that is used in forward propagation
+			weight_adjustment  (List / Array)		:	The value used to add to the initial weight
+
+			Returns: Array
+		"""
+		if operation == "+":
+			returned_value = self.matrixAddition(initial_weight, weight_adjustment)
+		elif operation == "-":
+			returned_value = self.matrixSubtract(initial_weight, weight_adjustment)
+
+		return Array(returned_value)
+
+
+
+
+
+
+
+
+
+
+class DeltaCalculationMethods():
+	def __init__(self):
+		super().__init__()
+
+
+	# rename 
+	# preceding_neuron_output_vector to l_output
+	# weight_matrix 
+	# proceding_neuron_output_matrix to fwd_l_delta
+
+	def sigmoidDeltaCalculation(self, l_output, weight_matrix, fwd_l_delta):
+		"""
+			Calculate the delta of the a layer using sigmoid derivative
+
+			Arguments: 
+				l_output (vector) 				:	The output of the layer or the ouput of the sigmoid function in that layer
+				weight_matrix (matrix)			:	Updated weight matrix next to the current layer being update
+				proceding_neuron_output_matrix (matrix)  (ith_layer + 1) 
+
+			Return (Vertor) Returns the calculated delta of the layer
+
+			Equation : transpose(weight_matrix) matx_mult(fwd_l_delta) * (l_output (1 - l_output)))
+		"""
+
+
+		"""
+		neuron_strenghts = self.vectorMultiply(
+			self.flatten(self.getMatrixSumOfRow(self.matrixVectorMultiply(self.transpose(weight_matrix), fwd_l_delta))), 
+			ArrayMethods().vectorMultiply(l_output, Array(l_output).subtract(1))
+			)
+		"""
+
+		transposed_weight = self.transpose(weight_matrix)
+
+		subtracted_arr = []
+		for neuron_val in l_output:
+			subtracted_arr.append(1 - neuron_val)
+
+		product_arr = []
+		for index in range(len(l_output)):
+			product_arr.append(l_output[index] * subtracted_arr[index])
+
+		dot_product_arr = self.matrixVectorMultiply(transposed_weight, fwd_l_delta)
+		sum_of_rows_arr = self.getMatrixSumOfRow(dot_product_arr)
+		neuron_strenghts = self.vectorMultiply(self.flatten(sum_of_rows_arr), product_arr)
+
+
+		return Array(neuron_strenghts)
+
+
+
+	def reluDeltaCalculation(self, l_fl_weight_matrix, fwd_l_delta, l_output):
+		"""
+			Calculate the delta of a layer using the dewrivative of the relu activation function
+
+			Arguments:
+			l_fl_weight_matrix (matrix) 		:	The weight matrix in the middle of the current layer and the next layer
+			fwd_l_delta (vecctor)				:	The calculated delta of the layer in front of the current layer
+			l_output (Vector)					: 	The ouput of the current layer
+
+			Return: (Vector)
+			Equation : dot(l_fl_weight_matrix, fwd_l_delta) * (l_output > 0)
+		"""
+
+		dy_l_output = []
+
+		for value in l_output:
+			if value > 0:
+				dy_l_output.append(1)
+			elif value <= 0:
+				dy_l_output.append(0)
+
+
+		delta_vector = ArrayMethods().vectorMultiply(
+			ArrayMethods().matrixVectorDotProd(
+				Array(l_fl_weight_matrix).transpose(), 
+				fwd_l_delta), 
+				dy_l_output
+			)
+
+		return delta_vector
+
+
+
+
+
+
+class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 	def __init__(self, learning_rate = -0.01):
 		"""
 			This class handles the backpropagation acalculation methods
 		"""
-
 		super().__init__()
 		self.learning_rate = learning_rate
 
@@ -879,7 +1167,7 @@ class BackPropagation(ArrayMethods, Array):
 
 
 
-	def getFLayerNeuronStrenght(self, predicted_ouputs_vector, actual_label_vector):
+	def getFinalLayerDelta(self, predicted_ouputs_vector, actual_label_vector):
 		"""
 			Calculate the final layer neuron strenghts
 
@@ -895,125 +1183,89 @@ class BackPropagation(ArrayMethods, Array):
 		return Array(returned_value)
 
 
-	def applyWeightAdjustment(self, initial_weight, weight_adjustment, operation = "+"):
-		"""
-			Apply the adjustments of the weights to the initial weight to update its value by getting the sum of the two array
-
-			Arguments:
-			initial_weight (List / Array)			:	The weights value that is used in forward propagation
-			weight_adjustment  (List / Array)		:	The value used to add to the initial weight
-
-			Returns: Array
-		"""
-		if operation == "+":
-			returned_value = self.matrixAddition(initial_weight, weight_adjustment)
-		elif operation == "-":
-			returned_value = self.matrixSubtract(initial_weight, weight_adjustment)
-
-		return Array(returned_value)
 
 
 
-	def L2RegularizationWeightAdj(self, learning_rate, layer_strenght, prev_layer_output, l2_lambda, intial_weight):
-		"""
-			Apply the l2 regularization when calculating the weights of the layers
-
-			Aguemtns:
-			learning_rate (float)			: The models learning rate
-			layer_strenght (Vector)			: The strenght of the hidden layer recieving from the weihts being update
-			prev_layer_output (Matrix)		: The output of the previos layer
-			l2_lambda (float) 				: L2 penalty
-			intial_weight (matrix)			: The initial weight
-
-			return matrix with values representing the amount to change the weight
- 
-		"""
-		weight_adjustment_matrix = self.matrixAddition(
-										Array(layer_strenght).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), 
-										self.matixScalaMultiply(intial_weight, l2_lambda)
-									)
+	def updateLayerWeight(self, alpha, fwd_l_delta, prev_l_output, init_weight, activation_function_method):
 		
-		weight_matrix_update = self.applyWeightAdjustment(
-								initial_weight = intial_weight, 
-								weight_adjustment = weight_adjustment_matrix, 
-								operation = "-"
-							)
-
-		return Array(weight_matrix_update)
-
-
-	# rename from calculateWeightAdjustment to updateLayerWeight
-	def updateLayerWeight(self, succeeding_layer_neuron_strenght, preceding_neuron_output, initial_weight_matrix):
-		""" 
-			Calculate and return an array of floats that is intended to use for calibrating the weights of the 
-			Neural network
-			
-			Arguments:
-			succeeding_layer_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
-			preceding_neuron_output (List / Array)			:	The layer of neurons that is first to recieve data relative to forward propagation direction
-			initial_weight_matrix (list / Matrix)			:	The initial weight without the adjustments
-
-			Returns: Array
-
-			formula:
-			weight_ajustments = -learning_rate * [matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)]
+		"""
+			Update weight matrix
 
 		"""
+		
+		if activation_function_method == "sigmoid":
+			if len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
+				weight_update_matrix = self.sigmoidWeightCalculation(
+											alpha = alpha, 
+											fwd_l_delta = fwd_l_delta, 
+											prev_l_output = prev_l_output, 
+											init_weight = init_weight
+											)
 
-		neighbor_neuron_dprod = self.matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)
-
-		weight_adjustment_matrix = []
-		for selected_row in neighbor_neuron_dprod:
-			result_row = []
-
-			for col_val in selected_row:
-				product = self.learning_rate * col_val
-				result_row.append(product)
-
-			weight_adjustment_matrix.append(result_row)
-
-
-		weight_update_matrix = self.applyWeightAdjustment(
-						initial_weight = initial_weight_matrix, 
-						weight_adjustment = weight_adjustment_matrix, 
-						operation = "+"
-					)
+		elif activation_function_method == "relu":
+			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
+				weight_update_matrix = self.reluWeightCalculations(
+											learning_rate = alpha, 
+											fwd_l_delta = fwd_l_delta, 
+											prev_l_output = prev_l_output, 
+											init_weight = init_weight
+											)
 
 		return Array(weight_update_matrix)
+		if len(weight_update_matrix) != 0: 
+			return Array(weight_update_matrix)
+		else:
+			raise ValueError("Error in mthod updateLayerWeight: returning none")
 
 
 
-	def getHLayerNeuronStrength(self, preceding_neuron_output_arr, weight, proceding_neuron_output_arr):
+
+	def L2regularizedWeightUpdate(self, learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight, activation_function = "sigmoid"):
+		"""
+			Update weight matrix with a regularization method
+
+		"""
+		if activation_function == "sigmoid":
+			weight_update_matrix = self.sigmoidL2RegularizationWeightUpdate(learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight)
+
+		return weight_update_matrix
+
+
+
+	# rename arguments;
+	# preceding_neuron_output_arr to l_output
+	# proceding_neuron_output_arr to fwd_l_delta
+	def getHiddenLayerDelta(self, l_output, weight, fwd_l_delta, activation_function = "sigmoid"):
 		"""
 			calculate the strenght of the neurons in a hidden layer 
 			
 			Arguments:
-			preceding_neuron_output (List / Array)		:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			prev_l_output (List / Array)				:	The layer of neurons that is first to recieve data relative to forward propagation direction
 			weights (List / Array) 						:	The weights in the middle to the two given neurons
 			proceding_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
 			
-			Retuns: Array
+			Retuns: Vector
 
 		"""
+		if activation_function == "sigmoid":
+			delta_vector = self.sigmoidDeltaCalculation(
+								l_output = l_output, 
+								weight_matrix = weight, 
+								fwd_l_delta = fwd_l_delta
+								)
 
-		transposed_weight = self.transpose(weight)
+		elif activation_function == "relu":
+			delta_vector = self.reluDeltaCalculation(
+								l_fl_weight_matrix = weight, 
+								fwd_l_delta = fwd_l_delta, 
+								l_output = l_output
+							)
+		
 
-		subtracted_arr = []
-		for neuron_val in preceding_neuron_output_arr:
-			subtracted_arr.append(1 - neuron_val)
-
-		product_arr = []
-		for index in range(len(preceding_neuron_output_arr)):
-			product_arr.append(preceding_neuron_output_arr[index] * subtracted_arr[index])
-
-		dot_product_arr = self.matrixVectorMultiply(transposed_weight, proceding_neuron_output_arr)
-		sum_of_rows_arr = self.getMatrixSumOfRow(dot_product_arr)
-		neuron_strenghts = self.vectorMultiply(self.flatten(sum_of_rows_arr), product_arr)
-
-		return Array(neuron_strenghts)
+		return delta_vector
 
 
-	def getAdjustedBiasdWeights(self, neuron_strnght):
+	def adjustBiasWeight(self, neuron_strnght):
 		"""
 			Calculate bias adjustment
 			
@@ -1027,6 +1279,7 @@ class BackPropagation(ArrayMethods, Array):
 		adjusted_biase = Array(neuron_strnght).multiply(self.learning_rate)
 		return Array(adjusted_biase)
 		
+
 
 
 	def getMeanSquaredError(self, ouput, labeld_output):
@@ -1071,10 +1324,8 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		self.regularization_method = regularization_method
 
 		self.layer_sizes = self.initailizeLayerSizes()
-
 		self.weights_set = self.initializeLayerWeights()
 		self.bias_weight_set = self.initializeBiasedWeights()
-
 		self.mean_square_error_log = []
 		self.batch_array = []
 		self.answer_key_batch_array = []
@@ -1084,7 +1335,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 	def fit(self, training_data, labeld_outputs, epoch, batch_size):
 		"""
-			
 			Arguments: 
 			training_data (Matrix)			: Matrix of the training data
 			labeld_outputs (Matrix)			: Matrix of the labled output of the training data
@@ -1092,7 +1342,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			batch_size (scalar int)			: The amount of batches of training data to be trained
 
 		"""
-		# print summary of the model
 		self.printNetworkPrelimSummary(epoch, batch_size)
 		
 
@@ -1125,7 +1374,8 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 					# get the labeld output of the input data
 					input_labeld_data = batch_key[data_index]
 
-					#print("\nInput data: ", input_data, " Labeld data: ", input_labeld_data)
+
+
 					#### FORWARD PROPAGATION ####
 					# holds the value of the ouputs of the previous layer the training_data variable is added intialy as it would 
 					# represent as the final ouput for the first layer in back propagation
@@ -1136,11 +1386,13 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 					# Loop through the entire layer of the neural network
 					for layer_index in range(layer_count):
+						layer_activation_function = self.layer_size_vectors[layer_index][1]
 						# create a layer where neuron activation and other transformation will handle
 						layer_ouput = self.fowardPropagation(
 										input_value = current_layer_input, 
 										weight_value = self.weights_set[layer_index], 
-										bias_weight = self.bias_weight_set[layer_index]
+										bias_weight = self.bias_weight_set[layer_index],
+										activation_function = layer_activation_function
 										)
 
 						# Append the output of the layer for backpropagation
@@ -1165,46 +1417,53 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 
 					#### BACK PROPAGATION #####
-					# Strenght of the current layer in loop, Initial value was calculated using the final layer strenght
-					delta_h = self.getFLayerNeuronStrenght(
+					# delta of the current layer in loop, Initial value was calculated using the final layer strenght
+					delta_h = self.getFinalLayerDelta(
 											predicted_ouputs_vector = layer_ouputs_matrix[-1], 
 											actual_label_vector = input_labeld_data
 										)
 
 					# Loop throught the entire layer from start to the final
 					for layer_index in range(len(self.layer_size_vectors) - 1, -1, -1): 
+						# get the specific activation function use by the current layer in iteration
+						layer_activation_function = self.layer_size_vectors[layer_index][1]
 						# update the weight of the biases every layer using the delta_h
-						self.bias_weight_set[layer_index] = self.getAdjustedBiasdWeights(neuron_strnght = delta_h)
+						self.bias_weight_set[layer_index] = self.adjustBiasWeight(neuron_strnght = delta_h)
 
 						# check if the layer in proccess is a hidden layer
 						if layer_index != 0:
 							# if the regularization_method is set to L2 regularization method
 							if self.regularization_method == "L2":
 								# calculate the adjustment needed to the weight with the L2 regualrization equation
-								weight_update = self.L2RegularizationWeightAdj(
+								weight_update = self.L2regularizedWeightUpdate(
 																learning_rate = self.learning_rate, 
-																layer_strenght = delta_h, 
+																delta_n = delta_h, 
 																prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
 																l2_lambda = self.l2_penalty, 
-																intial_weight = self.weights_set[layer_index]
+																intial_weight = self.weights_set[layer_index],
+																activation_function = layer_activation_function
 															)
 
 							# if there is no regularization method used the the weight is calculated using the sigmoid derivative in calculateWeightAdjustment method
 							elif self.regularization_method == "none":
 								# calculate the adjustment needed to apply to the initial weight
+								
 								weight_update = self.updateLayerWeight(
-														succeeding_layer_neuron_strenght = delta_h, 
-														preceding_neuron_output = layer_ouputs_matrix[layer_index - 1], 
-														initial_weight_matrix = self.weights_set[layer_index]
+														alpha = self.learning_rate,
+														fwd_l_delta = delta_h, 
+														prev_l_output = layer_ouputs_matrix[layer_index - 1], 
+														init_weight = self.weights_set[layer_index],
+														activation_function_method = layer_activation_function
 													)
 
 
 							# Update the layer weight with the new calculated weight
 							self.weights_set[layer_index] = weight_update
-							layer_strenght = self.getHLayerNeuronStrength(
-										preceding_neuron_output_arr = layer_ouputs_matrix[layer_index - 1], 
+							layer_strenght = self.getHiddenLayerDelta(
+										l_output = layer_ouputs_matrix[layer_index - 1], 
 										weight = weight_update, 
-										proceding_neuron_output_arr = delta_h
+										fwd_l_delta = delta_h,
+										activation_function = layer_activation_function
 									)
 
 							# update the value of delta_h coming from the calculated value of the hidden layer strenghts
@@ -1214,19 +1473,22 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						## check if the current layer in interation is the main input layer ##
 						elif layer_index == 0:
 							if self.regularization_method == "L2":
-								weight_update = self.L2RegularizationWeightAdj(
+								weight_update = self.L2regularizedWeightUpdate(
 																learning_rate = self.learning_rate, 
-																layer_strenght = delta_h, 
+																delta_n = delta_h, 
 																prev_layer_output = input_data, 
 																l2_lambda = self.l2_penalty, 
-																intial_weight = self.weights_set[layer_index]
+																intial_weight = self.weights_set[layer_index],
+																activation_function = layer_activation_function
 															)
 								
 							elif self.regularization_method == "none":
 								weight_update = self.updateLayerWeight(
-														succeeding_layer_neuron_strenght = delta_h, 
-														preceding_neuron_output = input_data, 
-														initial_weight_matrix = self.weights_set[layer_index]
+														alpha = self.learning_rate,
+														fwd_l_delta = delta_h, 
+														prev_l_output = input_data, 
+														init_weight = self.weights_set[layer_index],
+														activation_function_method = layer_activation_function
 													)
 
 							self.weights_set[layer_index] = weight_update
@@ -1253,7 +1515,8 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			layer_ouput = self.fowardPropagation(
 							input_value = layer_input, 
 							weight_value = self.weights_set[layer_index], 
-							bias_weight = self.bias_weight_set[layer_index]
+							bias_weight = self.bias_weight_set[layer_index],
+							activation_function = "sigmoid"
 							)
 			layer_output_arr.append(layer_ouput)
 			layer_input = layer_ouput
@@ -1261,20 +1524,19 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		return layer_output_arr[-1]
 
 
-
 	def initailizeLayerSizes(self):
 		layer_sizes = []
 		for layer_index in range(len(self.layer_size_vectors)):
-			current_layer_size = self.layer_size_vectors[layer_index]
+			current_layer_size = self.layer_size_vectors[layer_index][0]
 
 			if layer_index == 0:
 				new_layer = [current_layer_size, self.input_size]
 			elif layer_index != 0 :
-				new_layer = [current_layer_size, self.layer_size_vectors[layer_index - 1]]
+				new_layer = [current_layer_size, self.layer_size_vectors[layer_index - 1][0]]
 
 			layer_sizes.append(new_layer)
-
 		return layer_sizes
+
 
 
 	def initializeLayerWeights(self):
@@ -1369,7 +1631,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 		print("Layers: ")
 		for _layer_index in range(len(self.layer_sizes)):
-			print("	Layer: ", _layer_index + 1,  "	Activation Function: Sigmoid Function", tab, self.layer_sizes[_layer_index][0], " Neurons")
+			print("	Layer: ", _layer_index + 1,  "	Activation Function: ", self.layer_size_vectors[_layer_index][1], tab, self.layer_sizes[_layer_index][0], " Neurons")
 
 		print("\nFitting Progress:")
 
