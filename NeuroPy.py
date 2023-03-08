@@ -1725,3 +1725,48 @@ class LoadModel(CreateNetwork):
 			raise Exception(err_msg)
 
 
+
+
+class DataManager():
+	def __init__(self):
+		pass
+
+
+	def trainTestSplit(self, input_data, labeld_data, training_partition= 0.2):
+		input_data_lenght = len(input_data)
+		labeld_data_lenght = len(labeld_data)
+
+		if input_data_lenght != labeld_data_lenght:
+			err_msg = "Shape of Input data is not equal to the labeld data" + str(input_data_lenght) + " != " + str(labeld_data_lenght)
+			raise ValueError(err_msg)
+
+		if input_data_lenght < 10 and training_partition < 0.5:
+			err_msg = "The dataset is too small to be split with in given training_partition argument: " + str(training_partition)
+			raise ValueError(err_msg)
+
+
+		training_partition = int(training_partition * input_data_lenght)
+
+
+
+		trainig_input_data = []
+		test_input_data = []
+
+		training_labeld_data = []
+		test_labeld_data = []
+
+		last_data_indexed = 0
+		for data_index in range(training_partition):
+			trainig_input_data.append(input_data[data_index])
+			training_labeld_data.append(labeld_data[data_index])
+
+			last_data_indexed += 1
+
+		remaining_data = len(input_data) - last_data_indexed
+		for _ in range(remaining_data):
+			test_input_data.append(input_data[last_data_indexed])
+			test_labeld_data.append(labeld_data[last_data_indexed])
+
+			last_data_indexed += 1
+
+		return trainig_input_data, training_labeld_data, test_input_data, test_labeld_data
