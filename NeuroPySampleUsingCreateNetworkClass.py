@@ -1,5 +1,5 @@
 import NeuroPy as npy
-import matplotlib.pyplot as plt 
+#import matplotlib.pyplot as plt 
 
 
 hidden_layers = [(3, "sigmoid"), (10, "sigmoid"), (12, "sigmoid"), (10, "sigmoid"), (3, "sigmoid")]
@@ -27,11 +27,10 @@ answer = [answer_01, answer_02, answer_03]
 
 
 # fit the data
-result = model.fit(training_data, answer, 1000, 1)
-print("prediction: ", model.predict(training_data[0]))
+model.fit(training_data, answer, 1, 1)
 
 
-
+"""
 
 x = [i for i in range(len(model.mean_square_error_log))]
 y = model.mean_square_error_log
@@ -40,3 +39,4 @@ plt.xlabel("Epoch")
 plt.ylabel("Error value")
 plt.plot(x, y) 
 plt.show()
+"""
