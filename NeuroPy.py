@@ -6,13 +6,11 @@ Date: February 2, 2023
 
 Description: Contains class to create simple but expandable neural network from scratch.
 
-
-
-
 """
 
 from random import uniform
 from math import log, sqrt
+import json
 try:
 	from tqdm import tqdm
 except:
@@ -60,14 +58,13 @@ class ArrayMethods():
 
 	def matrixVectorDotProd(self, matrix, vector):
 		"""
-		Calculate the dot product of a vector and a matrix
+			Calculate the dot product of a vector and a matrix
 
-		Parameters:
-			vector (list): A 1-dimensional list representing a vector.
-			matrix (list): A 2-dimensional list representing a matrix.
+			Parameters:
+				vector (list): A 1-dimensional list representing a vector.
+				matrix (list): A 2-dimensional list representing a matrix.
 
-		Returns:
-			A vector representing the result of the dot product.
+			Returns (Vector) A vector representing the result of the dot product.
 		"""
 		if len(vector) != len(matrix[0]):
 			raise ValueError("The dimensions of the vector and matrix do not match.")
@@ -82,64 +79,64 @@ class ArrayMethods():
 		return result
 
 
-
-	def matrixMultiply(self, multiplier_arr, arr_to_mult):
+	def vectorDotProduct(self, multiplicand_vector, multiplier_vector):
 		"""
-			matrix multiplt two array
+			calculate the dot product of the two vector 
 			
 			Argumemts:
-			multiplier_arr	(List / Array)	
-			arr_to_mult		(List / Array)
+			multiplicand_vector	(Vector)	
+			multiplier_vector	(Vector)
 
-			Return Array
+			Return (matrix) with the shape row = lenght(multiplicand_vector), col = len(multiplier_vector)
 		"""
-		output_array = []
+		output_matrix = []
 
-		for multiplier in multiplier_arr:
+		for multiplicand_value in multiplicand_vector:
 			row_arr = []
-			for value in arr_to_mult:
-				product = multiplier * value
+			for multiplier_value in multiplier_vector:
+				product = multiplicand_value * multiplier_value
 				row_arr.append(product)
 
-			output_array.append(row_arr)
+			output_matrix.append(row_arr)
 
-		return output_array
+		return output_matrix
 
 
 
-	def matrixVectorMultiply(self, multiplicand_arr, multiplier_arr):
+	def matrixVectorMultiply(self, multiplicand_matrix, multiplicand_vecotr):
 		"""
-			multiple a vector to a matrix
+			multiply matrix to a vector
 			
 			Argumemts:
-			multiplicand_arr	(2d matrix array) 
-			multiplier_arr		(1d vector)
+			multiplicand_matrix	(Matrix) 
+			multiplicand_vecotr	(Vector)
 
-			Return Array
+			Return (Matrix) A two dimensional matrix 
 		"""
 		output_array = []
 
-		for selected_row in multiplicand_arr:
+		for selected_row in multiplicand_matrix:
 			new_row = []
 			for index in range(len(selected_row)):
-				new_row.append(selected_row[index] * multiplier_arr[index])
+				new_row.append(selected_row[index] * multiplicand_vecotr[index])
 			output_array.append(new_row)
 
 		return output_array
 
 
-	def getMatrixSumOfRow(self, _2d_matrix):
+
+	def getMatrixSumOfRow(self, matrix):
 		"""
 			caculate the sum of rows of a 2d matrix array
 			
 			Argumemts:
-			_2d_matrix	(2d matrix Array)
+			matrix	(Matrix)
 
-			Return Matrix Array
+			Return Matrix
 		"""
 		final_arr = []
 
-		for selected_row in _2d_matrix:
+		for selected_row in matrix:
 			sum_of_current_iter = 0
 			for value in selected_row:
 				sum_of_current_iter += value
@@ -608,6 +605,16 @@ class Array(list):
 
 
 
+	def minMaxNorm(self):
+		normalized_arr = []
+
+		for value in self:
+			norm = (value - self.max()) / (self.max() - self.min())
+			normalized_arr.append(norm)
+
+		return normalized_arr
+
+
 
 
 
@@ -930,17 +937,17 @@ class WeightUpdates():
 			Neural network
 			
 			Arguments:
-			succeeding_layer_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
-			preceding_neuron_output (List / Array)			:	The layer of neurons that is first to recieve data relative to forward propagation direction
-			initial_weight_matrix (list / Matrix)			:	The initial weight without the adjustments
+			alpha (scalar / float)				:	Network learning rate
+			fwd_l_delta (Vector)				:	The layer infront of the current layer [l + 1]
+			prev_l_output (Vector)				:	The layer before the current layer  [l - 1]
+			init_weight (matrix)				:	The initial weight without the adjustments
 
-			Returns: Array
+			Returns: (Matrix) Returns the updated weight of the given initial weight value
 
 			formula:
-			weight_ajustments = -learning_rate * [matrixMultiply(succeeding_layer_neuron_strenght, preceding_neuron_output)]
+			weight_ajustments = -learning_rate * [vectorDotProduct(fwd_l_delta, prev_l_output)]
 		"""
-
-		neighbor_neuron_dprod = self.matrixMultiply(fwd_l_delta, prev_l_output)
+		neighbor_neuron_dprod = self.vectorDotProduct(fwd_l_delta, prev_l_output)
 
 		weight_adjustment_matrix = []
 		for selected_row in neighbor_neuron_dprod:
@@ -1007,7 +1014,7 @@ class WeightUpdates():
 			Equation: 	dW = learning_rate * delta[l] [x] X.T)
 						W = W - (alpha * dw)
 		"""
-		weight_adjustment = self.matrixScalarMultiply(self.matrixMultiply(fwd_l_delta, prev_l_output), learning_rate)
+		weight_adjustment = self.matrixScalarMultiply(self.vectorDotProduct(fwd_l_delta, prev_l_output), learning_rate)
 		weight_update = self.matrixSubtract(init_weight, self.matrixScalarMultiply(weight_adjustment, learning_rate)) 
 
 		return weight_update
@@ -1155,7 +1162,6 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 				y = actual_label_vector[value_index]
 				p = predicted_ouputs_vector[value_index]
 
-				#print("p = ", p, " y = ", y)
 				output = -y * log(p+1e-9) - (1 - y) * log(1 - p+1e-9)
 
 				output_vector.append(output)
@@ -1344,8 +1350,6 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		"""
 		self.printNetworkPrelimSummary(epoch, batch_size)
 		
-
-
 		# Devide the training data in batches
 		self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
 
@@ -1657,3 +1661,67 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
  		"""
 
 		self.accuracy = (n_of_correct_pred / (n_of_training_data * training_epoch)) * 100
+
+
+
+	def setWeightSetsToLoaded(self, loaded_weight_set, loaded_bias_weight_set):
+		self.weights_set = loaded_weight_set
+		self.bias_weight_set = loaded_bias_weight_set
+
+
+
+	def saveModelToJson(self, fname = "NeuroPyModel"):
+		data_to_save = {
+		"input_size" : self.input_size,
+		"layer_size_vectors" : self.layer_size_vectors,
+		"learning_rate" : self.learning_rate,
+		"weight_initializer" : self.weight_initializer,
+		"l2_penalty" : self.l2_penalty,
+		"regularization_method" : self.regularization_method,
+		"weights_set" : self.weights_set,
+		"bias_weight_set" : self.bias_weight_set
+		}
+
+		json_obj = json.dumps(data_to_save, indent = 4)
+
+		file_name = fname + ".json"
+		with open(file_name, "w") as outfile:
+			outfile.write(json_obj)
+
+		print(file_name, " Saved complete ")
+
+
+
+
+
+class LoadModel(CreateNetwork):
+	def __init__(self, file_path):
+		self.file_path = file_path
+		self.loaded_network_data = self.loadNetworkJsonData()
+
+		super().__init__(
+			input_size = self.loaded_network_data["input_size"], 
+			layer_size_vectors = self.loaded_network_data["layer_size_vectors"], 
+			learning_rate = self.loaded_network_data["learning_rate"], 
+			weight_initializer = self.loaded_network_data["weight_initializer"], 
+			regularization_method = self.loaded_network_data["regularization_method"], 
+			l2_penalty = self.loaded_network_data["l2_penalty"]
+			)
+
+		self.setWeightSetsToLoaded(
+			loaded_weight_set = self.loaded_network_data["weights_set"], 
+			loaded_bias_weight_set = self.loaded_network_data["bias_weight_set"]
+			)
+
+
+	def loadNetworkJsonData(self):
+		try:
+			with open(self.file_path, 'r') as openfile:
+				json_object = json.load(openfile)
+
+				return json_object
+		except:
+			err_msg = "Failed loading " + self.file_path + " file"
+			raise Exception(err_msg)
+
+

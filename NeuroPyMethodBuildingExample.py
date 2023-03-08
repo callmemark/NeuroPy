@@ -1,5 +1,6 @@
 import NeuroPy as npy 
-import matplotlib.pyplot as plt 
+#import matplotlib.pyplot as plt 
+
 
 
 
@@ -69,14 +70,14 @@ training_data = [train_data_01, train_data_02, train_data_03]
 answer = [answer_01, answer_02, answer_03]
 
 
-epoch = 45
+epoch = 1
 model = sampleModel()
 
 for _ in range(epoch):
 	for data_index in range(len(training_data)):
 		model.fit(training_data[data_index], answer[data_index])
 
-
+"""
 x = [i for i in range(len(model.mse_arr))]
 y = model.mse_arr
 plt.title("Mean square error") 
@@ -86,3 +87,4 @@ plt.plot(x, y)
 plt.show()
 
 print(model.fl_w)
+"""
