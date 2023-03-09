@@ -366,6 +366,76 @@ class ArrayMethods():
 
 
 
+	def matrixScalarDevision(self, matrix, scalar_devider):
+		output_array = []
+
+		for row in matrix:
+			col_val_sum = []
+			for col_val in row:
+				col_val_sum.append(col_val / scalar_devider)
+
+			output_array.append(col_val_sum)
+
+		return Array(output_array)
+
+
+
+	def matrixScalarSubtract(self, matrix, scalar_minuend):
+		output_array = []
+
+		for row in matrix:
+			col_val_sum = []
+			for col_val in row:
+				col_val_sum.append(col_val - scalar_minuend)
+
+			output_array.append(col_val_sum)
+
+		return Array(output_array)
+
+
+
+	def matrixAverage(self, ndMatrix):
+		"""
+			Calculate the matrix indide the list of matrix
+			
+			Arguments:
+			ndMatrix (Matrix)				: A list holding multiple matrix
+		"""
+
+		matrix_count = len(ndMatrix)
+		ind_matrix_count = len(ndMatrix[0])
+
+		ouput_matrix = []
+
+		for mtx in ndMatrix:
+			if len(ouput_matrix) == 0:
+				ouput_matrix = mtx
+				continue
+
+			n_vec = 0
+			for vector_index in range(len(mtx)):
+				n_vec += 1
+				ouput_matrix[vector_index] = Array(ouput_matrix[vector_index]).addArray(mtx[vector_index])
+
+			n_vec = 0
+
+		ouput_matrix = self.matrixScalarDevision(ouput_matrix, matrix_count)
+
+		return ouput_matrix
+
+
+	def matrixSum(self, matrix):
+		"""
+			Return (Scalar)
+		"""
+		vector_sum = 0
+		for vector in matrix:
+			vector_sum += Array(vector).sum()
+
+		return vector_sum
+
+
+
 
 
 
@@ -960,13 +1030,14 @@ class WeightUpdates():
 			weight_adjustment_matrix.append(result_row)
 
 
-		weight_update_matrix = self.applyWeightAdjustment(
-						initial_weight = init_weight, 
-						weight_adjustment = weight_adjustment_matrix, 
-						operation = "+"
-					)
+		#weight_update_matrix = self.applyWeightAdjustment(
+		#				initial_weight = init_weight, 
+		#				weight_adjustment = weight_adjustment_matrix, 
+		#				operation = "+"
+		#			)
 
-		return weight_update_matrix
+		#return weight_update_matrix
+		return weight_adjustment_matrix
 
 
 
@@ -1144,7 +1215,8 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 		self.learning_rate = learning_rate
 
 
-	def getCrossEntropyLoss(self, predicted_ouputs_vector, actual_label_vector):
+
+	def getCrossEntropyLoss(self, predicted_ouputs_vector, actual_label_vector, activation_function):
 		"""
 			This method is made to calculate the coss entropy loss for the final layer
 
@@ -1153,23 +1225,33 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 			actual_label_vector (Vector) (y)	:	The actual label for the given problem
 
 			Return (Vector) calculated loss
-			Equation : -y * log(p) - (1 - y) * log(1-p)
+
+			Equation:
+				Softamx : CE = -∑(y * log(softmax(z)))
+				Sigmoid: CE = - ∑(y * log(sigmoid(z)) + (1-y) * log(1-sigmoid(z)))
+
+				Where:
+					z = predicted probability distribution
 		"""
-		try:
-			output_vector = []
 
-			for value_index in range(len(predicted_ouputs_vector)):
-				y = actual_label_vector[value_index]
-				p = predicted_ouputs_vector[value_index]
+		output_array = []
+		for val_index in range(len(predicted_ouputs_vector)):
+			y = actual_label_vector[val_index]
+			p = predicted_ouputs_vector[val_index]
 
-				output = -y * log(p+1e-9) - (1 - y) * log(1 - p+1e-9)
+			if activation_function == "softmax":
+				cross_entropy_calculation = y * log(p) # Wihtout getting the sum 
+			elif activation_function == "sigmoid":
+				cross_entropy_calculation = y * log(p) + (1 - y) * log(1 - p)
 
-				output_vector.append(output)
 
-			return output_vector
-		except ValueError:
-			err_msg = "Math dommain erro: where p = " + str(p)
-			raise Exception(err_msg)
+			output_array.append(cross_entropy_calculation)
+		
+		return output_array
+
+
+
+		
 
 
 
@@ -1192,21 +1274,30 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 
 
 
-	def updateLayerWeight(self, alpha, fwd_l_delta, prev_l_output, init_weight, activation_function_method):
+	def updateLayerWeight(self, alpha, fwd_l_delta, prev_l_output, init_weight, activation_function_method, get_updated_weight = True):
 		
 		"""
 			Update weight matrix
+			Arguemnts:
 
+
+			get_weight_update (Boolean)					: If True the function will return the updated weight matrix, If False will return the Update matrix instead of the updated weight 
 		"""
 		
 		if activation_function_method == "sigmoid":
 			if len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
-				weight_update_matrix = self.sigmoidWeightCalculation(
+				weight_adjustment_matrix = self.sigmoidWeightCalculation(
 											alpha = alpha, 
 											fwd_l_delta = fwd_l_delta, 
 											prev_l_output = prev_l_output, 
 											init_weight = init_weight
 											)
+
+				weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = weight_adjustment_matrix, 
+						operation = "+"
+					)
 
 		elif activation_function_method == "relu":
 			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
@@ -1217,11 +1308,13 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 											init_weight = init_weight
 											)
 
-		return Array(weight_update_matrix)
-		if len(weight_update_matrix) != 0: 
+
+		if get_updated_weight == True:
 			return Array(weight_update_matrix)
+		elif get_updated_weight == False:
+			return Array(weight_adjustment_matrix)
 		else:
-			raise ValueError("Error in mthod updateLayerWeight: returning none")
+			raise Exception("No weight matrix is returned is returned")
 
 
 
@@ -1238,9 +1331,6 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 
 
 
-	# rename arguments;
-	# preceding_neuron_output_arr to l_output
-	# proceding_neuron_output_arr to fwd_l_delta
 	def getHiddenLayerDelta(self, l_output, weight, fwd_l_delta, activation_function = "sigmoid"):
 		"""
 			calculate the strenght of the neurons in a hidden layer 
@@ -1287,21 +1377,20 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 		
 
 
-
-	def getMeanSquaredError(self, ouput, labeld_output):
+	def getMeanSquaredError(self, predicted_ouputs_vector, actual_label_vector):
 		"""
 			Calculate the mean squared error or cost value
 
 			Arguments;
-			ouput (List / Array) 				:	The unlabled output, or the output from the sigmoid function
-			labeld_output (List / Array)		:	The labled output
+			predicted_ouputs_vector (List / Array) 				:	The unlabled output, or the output from the sigmoid function
+			actual_label_vector (List / Array)		:	The labled output
 			
 			returns : float
-			Formula : 1 / lne(ouput) * sum((ouput - labeld_output) ** 2)
+			Formula : 1 / lne(predicted_ouputs_vector) * sum((predicted_ouputs_vector - actual_label_vector) ** 2)
 
 		"""
 
-		arr_difference = self.vectorSubtract(ouput, labeld_output)
+		arr_difference = self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)
 		squared_arr = self.vectorSquare(arr_difference)
 
 		arr_sum = Array(squared_arr).sum()
@@ -1311,8 +1400,30 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 
 
 
+	def sgdMiniBatchWeightUpdate(self, init_weight, layer_weight_updates_matrix, learning_rate, mini_batch_size):
+		"""
+			Apply the stochastic gradient decent by mini-batch
+			
+			Arguments:
+			init_weight (Matrix)								: The initial weight of the layer
+			layer_weight_updates_matrix (multidim Matrix)		: Contains the n weight update matrix where n is the number of the mini batch
 
+			Equation:
+			W = W - (learning_rate / m) * sum(grads)
+				Where:
+				W = is the weight matrix of the network, 
+				learning_rate = is the step size or learning rate hyperparameter, 
+				m = is the batch size
+				grads = is the average gradient of the loss with respect to the weights across all examples in the batch.
 
+			return (Matrix) updated weight
+		"""
+
+		grad = self.matrixSum(self.matrixAverage(layer_weight_updates_matrix))
+		trm_2 = (learning_rate / mini_batch_size) * grad
+		final_weight_update = self.matrixScalarSubtract(init_weight, trm_2)
+
+		return final_weight_update
 
 
 
@@ -1340,173 +1451,175 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 
 	def fit(self, training_data, labeld_outputs, epoch, batch_size):
-		"""
-			Arguments: 
-			training_data (Matrix)			: Matrix of the training data
-			labeld_outputs (Matrix)			: Matrix of the labled output of the training data
-			epoch (scalar int)				: The amount of loop i will do to look over the entire training data
-			batch_size (scalar int)			: The amount of batches of training data to be trained
+			"""
+				Arguments: 
+				training_data (Matrix)			: Matrix of the training data
+				labeld_outputs (Matrix)			: Matrix of the labled output of the training data
+				epoch (scalar int)				: The amount of loop i will do to look over the entire training data
+				batch_size (scalar int)			: The amount of batches of training data to be trained
 
-		"""
-		self.printNetworkPrelimSummary(epoch, batch_size)
-		
-		# Devide the training data in batches
-		self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
+			"""
+			self.printNetworkPrelimSummary(epoch, batch_size)
+			
+			# Devide the training data in batches
+			self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
 
-		# get the value of hopw many layers the network have
-		layer_count = len(self.layer_sizes)
+			# get the value of hopw many layers the network have
+			layer_count = len(self.layer_sizes)
 
-		# get how many batches is needed to loop through
-		batches_count = len(self.batch_array)
+			# get how many batches is needed to loop through
+			batches_count = len(self.batch_array)
 
-		# count the number of correct prediction to calculate accuracy of the model
-		correct_prediction = 0
-		
+			# count the number of correct prediction to calculate accuracy of the model
+			correct_prediction = 0
+			
 
-		for _ in tqdm(range(epoch)):
-			for training_batch_set_index in range(batches_count):
-				# The set of trainig data in the batch array
-				training_batch = self.batch_array[training_batch_set_index]
-				# The answer key or labeled ouput of the batch
-				batch_key = self.answer_key_batch_array[training_batch_set_index]
+			for _ in tqdm(range(epoch)):
+				for training_batch_set_index in range(batches_count):
+					# The set of trainig data in the batch array
+					training_batch = self.batch_array[training_batch_set_index]
+					# The answer key or labeled ouput of the batch
+					batch_key = self.answer_key_batch_array[training_batch_set_index]
 
-				# loop through the entire data inside the batch 
-				count_data_in_batch = len(training_batch)
-				for data_index in range(count_data_in_batch):
-					# get the input data for the current loop
-					input_data = training_batch[data_index]
-					# get the labeld output of the input data
-					input_labeld_data = batch_key[data_index]
+					# loop through the entire data inside the batch 
+					count_data_in_batch = len(training_batch)
+					for data_index in range(count_data_in_batch):
+						# get the input data for the current loop
+						input_data = training_batch[data_index]
+						# get the labeld output of the input data
+						input_labeld_data = batch_key[data_index]
 
 
 
-					#### FORWARD PROPAGATION ####
-					# holds the value of the ouputs of the previous layer the training_data variable is added intialy as it would 
-					# represent as the final ouput for the first layer in back propagation
-					layer_ouputs_matrix = []
-					
-					# The input of the current layer
-					current_layer_input = input_data
+						#### FORWARD PROPAGATION ####
+						# holds the value of the ouputs of the previous layer the training_data variable is added intialy as it would 
+						# represent as the final ouput for the first layer in back propagation
+						layer_ouputs_matrix = []
+						
+						# The input of the current layer
+						current_layer_input = input_data
 
-					# Loop through the entire layer of the neural network
-					for layer_index in range(layer_count):
-						layer_activation_function = self.layer_size_vectors[layer_index][1]
-						# create a layer where neuron activation and other transformation will handle
-						layer_ouput = self.fowardPropagation(
-										input_value = current_layer_input, 
-										weight_value = self.weights_set[layer_index], 
-										bias_weight = self.bias_weight_set[layer_index],
-										activation_function = layer_activation_function
+						# Loop through the entire layer of the neural network
+						for layer_index in range(layer_count):
+							layer_activation_function = self.layer_size_vectors[layer_index][1]
+							# create a layer where neuron activation and other transformation will handle
+							layer_ouput = self.fowardPropagation(
+											input_value = current_layer_input, 
+											weight_value = self.weights_set[layer_index], 
+											bias_weight = self.bias_weight_set[layer_index],
+											activation_function = layer_activation_function
+											)
+
+							# Append the output of the layer for backpropagation
+							layer_ouputs_matrix.append(layer_ouput)
+							# update the input for the next layer
+							current_layer_input = layer_ouput
+
+
+						#### calculate Loss functions ####
+						#getCrossEntropyLoss getMeanSquaredError 
+						mean_square_error = self.getCrossEntropyLoss(
+							 						predicted_ouputs_vector = layer_ouputs_matrix[-1], 
+							 						actual_label_vector = input_labeld_data,
+							 						activation_function = "sigmoid"
+							 						)
+						# Append the result to the error log
+						self.mean_square_error_log.append(mean_square_error)
+						# Check if the model prediction was correct
+						final_prediction = ActivationFunction().argMax(layer_ouputs_matrix[-1])
+						if final_prediction == input_labeld_data:
+							correct_prediction += 1
+
+
+
+
+						#### BACK PROPAGATION #####
+						# delta of the current layer in loop, Initial value was calculated using the final layer strenght
+						delta_h = self.getFinalLayerDelta(
+												predicted_ouputs_vector = layer_ouputs_matrix[-1], 
+												actual_label_vector = input_labeld_data
+											)
+
+						# Loop throught the entire layer from start to the final
+						for layer_index in range(len(self.layer_size_vectors) - 1, -1, -1): 
+							# get the specific activation function use by the current layer in iteration
+							layer_activation_function = self.layer_size_vectors[layer_index][1]
+							# update the weight of the biases every layer using the delta_h
+							self.bias_weight_set[layer_index] = self.adjustBiasWeight(neuron_strnght = delta_h)
+
+							# check if the layer in proccess is a hidden layer
+							if layer_index != 0:
+								# if the regularization_method is set to L2 regularization method
+								if self.regularization_method == "L2":
+									# calculate the adjustment needed to the weight with the L2 regualrization equation
+									weight_update = self.L2regularizedWeightUpdate(
+																	learning_rate = self.learning_rate, 
+																	delta_n = delta_h, 
+																	prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
+																	l2_lambda = self.l2_penalty, 
+																	intial_weight = self.weights_set[layer_index],
+																	activation_function = layer_activation_function
+																)
+
+								# if there is no regularization method used the the weight is calculated using the sigmoid derivative in calculateWeightAdjustment method
+								elif self.regularization_method == "none":
+									# calculate the adjustment needed to apply to the initial weight
+									
+									weight_update = self.updateLayerWeight(
+															alpha = self.learning_rate,
+															fwd_l_delta = delta_h, 
+															prev_l_output = layer_ouputs_matrix[layer_index - 1], 
+															init_weight = self.weights_set[layer_index],
+															activation_function_method = layer_activation_function
+														)
+
+
+								# Update the layer weight with the new calculated weight
+								self.weights_set[layer_index] = weight_update
+								layer_strenght = self.getHiddenLayerDelta(
+											l_output = layer_ouputs_matrix[layer_index - 1], 
+											weight = weight_update, 
+											fwd_l_delta = delta_h,
+											activation_function = layer_activation_function
 										)
 
-						# Append the output of the layer for backpropagation
-						layer_ouputs_matrix.append(layer_ouput)
-						# update the input for the next layer
-						current_layer_input = layer_ouput
+								# update the value of delta_h coming from the calculated value of the hidden layer strenghts
+								delta_h = layer_strenght
 
 
-					#### calculate Loss functions ####
-					mean_square_error = self.getMeanSquaredError(
-						 						ouput = layer_ouputs_matrix[-1], 
-						 						labeld_output = input_labeld_data
-						 						)
-					# Append the result to the error log
-					self.mean_square_error_log.append(mean_square_error)
-					# Check if the model prediction was correct
-					final_prediction = ActivationFunction().argMax(layer_ouputs_matrix[-1])
-					if final_prediction == input_labeld_data:
-						correct_prediction += 1
+							## check if the current layer in interation is the main input layer ##
+							elif layer_index == 0:
+								if self.regularization_method == "L2":
+									weight_update = self.L2regularizedWeightUpdate(
+																	learning_rate = self.learning_rate, 
+																	delta_n = delta_h, 
+																	prev_layer_output = input_data, 
+																	l2_lambda = self.l2_penalty, 
+																	intial_weight = self.weights_set[layer_index],
+																	activation_function = layer_activation_function
+																)
+									
+								elif self.regularization_method == "none":
+									weight_update = self.updateLayerWeight(
+															alpha = self.learning_rate,
+															fwd_l_delta = delta_h, 
+															prev_l_output = input_data, 
+															init_weight = self.weights_set[layer_index],
+															activation_function_method = layer_activation_function
+														)
+
+								self.weights_set[layer_index] = weight_update
+								break
 
 
+			# After fitting calculate the model acccuracy
+			self.calculateModelAccuracy(
+					n_of_correct_pred = correct_prediction, 
+					n_of_training_data = len(training_data), 
+					training_epoch = epoch
+				)
 
-
-					#### BACK PROPAGATION #####
-					# delta of the current layer in loop, Initial value was calculated using the final layer strenght
-					delta_h = self.getFinalLayerDelta(
-											predicted_ouputs_vector = layer_ouputs_matrix[-1], 
-											actual_label_vector = input_labeld_data
-										)
-
-					# Loop throught the entire layer from start to the final
-					for layer_index in range(len(self.layer_size_vectors) - 1, -1, -1): 
-						# get the specific activation function use by the current layer in iteration
-						layer_activation_function = self.layer_size_vectors[layer_index][1]
-						# update the weight of the biases every layer using the delta_h
-						self.bias_weight_set[layer_index] = self.adjustBiasWeight(neuron_strnght = delta_h)
-
-						# check if the layer in proccess is a hidden layer
-						if layer_index != 0:
-							# if the regularization_method is set to L2 regularization method
-							if self.regularization_method == "L2":
-								# calculate the adjustment needed to the weight with the L2 regualrization equation
-								weight_update = self.L2regularizedWeightUpdate(
-																learning_rate = self.learning_rate, 
-																delta_n = delta_h, 
-																prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
-																l2_lambda = self.l2_penalty, 
-																intial_weight = self.weights_set[layer_index],
-																activation_function = layer_activation_function
-															)
-
-							# if there is no regularization method used the the weight is calculated using the sigmoid derivative in calculateWeightAdjustment method
-							elif self.regularization_method == "none":
-								# calculate the adjustment needed to apply to the initial weight
-								
-								weight_update = self.updateLayerWeight(
-														alpha = self.learning_rate,
-														fwd_l_delta = delta_h, 
-														prev_l_output = layer_ouputs_matrix[layer_index - 1], 
-														init_weight = self.weights_set[layer_index],
-														activation_function_method = layer_activation_function
-													)
-
-
-							# Update the layer weight with the new calculated weight
-							self.weights_set[layer_index] = weight_update
-							layer_strenght = self.getHiddenLayerDelta(
-										l_output = layer_ouputs_matrix[layer_index - 1], 
-										weight = weight_update, 
-										fwd_l_delta = delta_h,
-										activation_function = layer_activation_function
-									)
-
-							# update the value of delta_h coming from the calculated value of the hidden layer strenghts
-							delta_h = layer_strenght
-
-
-						## check if the current layer in interation is the main input layer ##
-						elif layer_index == 0:
-							if self.regularization_method == "L2":
-								weight_update = self.L2regularizedWeightUpdate(
-																learning_rate = self.learning_rate, 
-																delta_n = delta_h, 
-																prev_layer_output = input_data, 
-																l2_lambda = self.l2_penalty, 
-																intial_weight = self.weights_set[layer_index],
-																activation_function = layer_activation_function
-															)
-								
-							elif self.regularization_method == "none":
-								weight_update = self.updateLayerWeight(
-														alpha = self.learning_rate,
-														fwd_l_delta = delta_h, 
-														prev_l_output = input_data, 
-														init_weight = self.weights_set[layer_index],
-														activation_function_method = layer_activation_function
-													)
-
-							self.weights_set[layer_index] = weight_update
-							break
-
-
-		# After fitting calculate the model acccuracy
-		self.calculateModelAccuracy(
-				n_of_correct_pred = correct_prediction, 
-				n_of_training_data = len(training_data), 
-				training_epoch = epoch
-			)
-
-		self.printFittingSummary()
+			self.printFittingSummary()
 
 
 
