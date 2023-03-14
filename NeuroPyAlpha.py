@@ -307,6 +307,29 @@ class WeightUpdates():
 		return weight_adjustment_matrix
 
 
+	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output_matrix, init_weight):
+		"""
+			calculate and update the weights without any regularization
+				New:	
+						dW = prev_l_output * fwd_l_delta.T
+						W = W - learning_rate * (dW + lambda * W) with Lw
+						W = W - learning_rate * dW  # Without L2
+		"""
+
+		# FLAG : BROKEN
+		print("\n\n prev_l_output_matrix >>> ", prev_l_output_matrix, "\n\n")
+		delta_w_matrix = []
+		for prev_layer_output in prev_l_output_matrix:
+			print("\n\n prev_layer_output >>> ", prev_layer_output, "\n\n")
+
+			weight_adjustment = Matrix().transpose(Matrix().outerProduct(prev_layer_output, fwd_l_delta))
+			weight_update = Matrix().matrixAddition(init_weight, Matrix().matrixScalarMultiply(weight_adjustment, learning_rate)) 
+
+			delta_w_matrix.append(weight_update)
+
+						
+		return delta_w_matrix
+
 
 	def sigmoidL2RegularizationWeightUpdate(self, learning_rate, delta_n, prev_layer_output_matrix, l2_lambda, intial_weight):
 		"""
@@ -352,24 +375,7 @@ class WeightUpdates():
 
 
 
-	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output, init_weight):
-		"""
-			calculate and update the weights without any regularization
-				New:	
-						dW = prev_l_output * fwd_l_delta.T
-						W = W - learning_rate * (dW + lambda * W) with Lw
-						W = W - learning_rate * dW  # Without L2
-		"""
-		
-		
-		#weight_adjustment = self.matrixScalarMultiply(self.outerProduct(fwd_l_delta, prev_l_output), learning_rate)
-		#weight_update = self.matrixSubtract(init_weight, self.matrixScalarMultiply(weight_adjustment, learning_rate)) 
-		
-		# NEW CHANGES
-		weight_adjustment = Matrix().transpose(Matrix().outerProduct(prev_l_output, fwd_l_delta))
-		weight_update = Matrix().matrixAddition(init_weight, Matrix().matrixScalarMultiply(weight_adjustment, learning_rate)) 
-						#self.
-		return weight_update
+
 
 
 
@@ -390,21 +396,6 @@ class WeightUpdates():
 			returned_value = Matrix().matrixSubtract(initial_weight, weight_adjustment)
 
 		return Vector(returned_value)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -445,7 +436,7 @@ class DeltaCalculationMethods():
 		"""
 
 		calculated_delta_matrix = []
-		for output_vector_ind in prev_l_output_matrix: # FLAG : 
+		for output_vector_ind in prev_l_output_matrix: # FLAG : BROKEN
 			transposed_weight = Matrix().transpose(weight_matrix)
 
 			subtracted_arr = []
@@ -468,7 +459,7 @@ class DeltaCalculationMethods():
 
 
 
-	def reluDeltaCalculation(self, l_fl_weight_matrix, fwd_l_delta, l_output):
+	def reluDeltaCalculation(self, l_fl_weight_matrix, fwd_l_delta, prev_l_output_matrix):
 		"""
 			Calculate the delta of a layer using the dewrivative of the relu activation function
 
@@ -482,27 +473,24 @@ class DeltaCalculationMethods():
 			1. delta_j = dot(l_fl_weight_matrix, fwd_l_delta) * (l_output > 0)
 			2. delta_j = relu_derivative(z_j) * sum(w_jk * delta_k)
 		"""
-
+		# FLAG : BROKEN
 		# NEW CHANGES
-		relu_derivative = []
-		for value in l_output:
-			if value > 0:
-				relu_derivative.append(1)
-			elif value <= 0:
-				relu_derivative.append(0)
+		calculated_delta_matrix = []
+		for l_output in prev_l_output_matrix:
+			relu_derivative = []
+			for value in l_output:
+				if value > 0:
+					relu_derivative.append(1)
+				elif value <= 0:
+					relu_derivative.append(0)
 
-		weight_delta_sum = Matrix().matrixSum(Matrix().matrixVectorMultiply(Matrix().transpose(l_fl_weight_matrix), fwd_l_delta))
-		delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
+			weight_delta_sum = Matrix().matrixSum(Matrix().matrixVectorMultiply(Matrix().transpose(l_fl_weight_matrix), fwd_l_delta))
+			delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
+			
+			calculated_delta_matrix.append(delta_vector)
+
 		
-		return delta_vector
-
-
-
-
-
-
-
-
+		return Matrix().columnAverage(calculated_delta_matrix)[0]
 
 
 
@@ -632,12 +620,21 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 
 		elif activation_function_method == "relu":
 			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
-				weight_update_matrix = self.reluWeightCalculations(
+				weight_adjustment_matrix = self.reluWeightCalculations(
 											learning_rate = alpha, 
 											fwd_l_delta = fwd_l_delta, 
-											prev_l_output = prev_l_output, 
+											prev_l_output_matrix = prev_l_output, 
 											init_weight = init_weight
 											)
+				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
+
+				weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = delta_w_vector, 
+						operation = "-"
+					)
+
+
 
 		if Matrix().getShape(weight_update_matrix) != Matrix().getShape(init_weight):
 			err_msg = "Calculated update weight is not equal to the initial weight with shape " + str(Matrix().getShape(weight_update_matrix)) + " Rather than " + str(Matrix().getShape(init_weight))
@@ -692,7 +689,7 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 			delta_vector = self.reluDeltaCalculation(
 								l_fl_weight_matrix = weight, 
 								fwd_l_delta = fwd_l_delta, 
-								l_output = prev_l_output_matrix
+								prev_l_output_matrix = prev_l_output_matrix
 							)
 		else:
 			err_msg = "No Activation function named: " + activation_function
@@ -789,25 +786,6 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class CreateNetwork(ForwardPropagation, BackPropagation):
 	def __init__(self, input_size, layer_size_vectors, learning_rate = -0.01, weight_initializer = "xavierweight", regularization_method = "none", l2_penalty = 0.01):
 		super().__init__()
@@ -838,7 +816,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 				batch_size (scalar int)			: The amount of batches of training data to be trained
 
 			"""
-			self.printNetworkPrelimSummary(epoch, batch_size)
+			#self.printNetworkPrelimSummary(epoch, batch_size) # FLAG : TEMPORAY
 			
 			# Devide the training data in batches
 			self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
@@ -909,7 +887,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						 						)
 					
 					# Append the result to the error log
-					self.mean_square_error_log.append(mean_square_error)
+					self.mean_square_error_log.append(mean_square_error * -1)
 
 					self.BackPropagationProcess(
 						layers_output_tensor = batch_layer_ouput_tensor,
@@ -917,7 +895,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						layer_input_matrix = input_data
 						)
 
-			self.printFittingSummary()
+			#self.printFittingSummary() FLAG : TEMPORARY
 
 
 
@@ -957,6 +935,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						init_weight = self.weights_set[layer_index], 
 						activation_function_method = layer_activation_function 
 						)
+					self.weights_set[layer_index] = l_w_update
 
 				elif layer_index == 0: # if the layer is the input layer
 					l_w_update = self.updateLayerWeight(
@@ -964,16 +943,16 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						fwd_l_delta = fwd_l_d, 
 						prev_l_output = layer_input_matrix, 
 						init_weight = self.weights_set[layer_index], 
-						activation_function_method = "sigmoid" # FLAG : TEMPORARY 
+						activation_function_method = layer_activation_function
 						)
+					self.weights_set[layer_index] = l_w_update
 
 
-				self.weights_set[layer_index] = l_w_update
 				cld_l_d = self.getHiddenLayerDelta(
 						prev_l_output_matrix = layers_output_tensor[layer_index - 1],
 						weight = l_w_update,
 						fwd_l_delta = fwd_l_d,
-						activation_function = "sigmoid" # FLAG : TEMPORARY
+						activation_function = layer_activation_function
 						)
 
 				fwd_l_d = cld_l_d
@@ -982,7 +961,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			except Exception as err:
 				print("ERROR in index: ", layer_index)
 				print("learning_rate >>> ", self.learning_rate, "\n", "fwd_l_d >>> ",fwd_l_d, "\n", "layers_output_tensor >>> ", layers_output_tensor[layer_index - 1], "weights_set[layer_index] >>> ", self.weights_set[layer_index])
-				raise Exception(err)
+				raise Exception("Error")
 
 
 
@@ -997,15 +976,18 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		layer_output_arr = []
 
 		for layer_index in range(len(self.layer_sizes)):
-			# create a layer where neuron activation and other transformation will handle
-			layer_ouput = self.layerForwardPass(
-							input_value = layer_input, 
-							weight_value = self.weights_set[layer_index], 
-							bias_weight = self.bias_weight_set[layer_index],
-							activation_function = "sigmoid"
-							)
-			layer_output_arr.append(layer_ouput)
-			layer_input = layer_ouput
+			layer_activation_function = self.layer_size_vectors[layer_index][1]
+			
+			current_layer_input = self.layerForwardPass(
+								input_matrix = layer_input,
+								weight_matrix = self.weights_set[layer_index], 
+								bias_weight_matrix = self.bias_weight_set[layer_index],
+								activation_function = layer_activation_function
+								)
+			
+			layer_output_arr.append(current_layer_input)
+			layer_input = current_layer_input
+			
 		
 		return layer_output_arr[-1]
 
