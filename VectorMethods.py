@@ -8,8 +8,6 @@ Description:
 """
 
 
-
-
 class Vector(list):
 	def __init__(self, data):
 		"""
@@ -88,7 +86,7 @@ class Vector(list):
 
 	def sum(self):
 		"""
-			get the sum of all alements in array
+			get the sum of all alements in vector
 
 			Arguments: takes 0 arguments
 			Return: float
@@ -169,6 +167,19 @@ class Vector(list):
 		return standard_dev
 
 
+	def maximum(self, sacalar_difference):
+		"""
+			returns the vector of the elements that have higher value than the sacalar_difference argument of else return the sacalar_difference
+		"""	
+		output_vector = []
+
+		for val in self:
+			output_vector.append(max(sacalar_difference, val))
+
+		return Vector(output_vector)
+
+
+
 	def addVector(self, addends_vector):
 		"""
 			Add vector to this object
@@ -178,13 +189,13 @@ class Vector(list):
 
 			Return: Vector
 		"""
-		self.checkLenghtEquality(addends_vector)
+		#self.checkLenghtEquality(addends_vector)
 
-		sum_arry = []
+		output_vector = []
 		for self_val, arg_val in zip(self, addends_vector):
-			sum_arry.append(self_val + arg_val)
+			output_vector.append(self_val + arg_val)
 
-		return Vector(sum_arry)
+		return Vector(output_vector)
 
 
 	def subtractVector(self, minuend_vector):
@@ -196,7 +207,7 @@ class Vector(list):
 
 			Return: Vector
 		"""
-		self.checkLenghtEquality(minuend_vector)
+		#self.checkLenghtEquality(minuend_vector)
 
 		output_vector = []
 		for self_val, arg_val in zip(self, minuend_vector):
@@ -215,7 +226,7 @@ class Vector(list):
 
 			Return: Vector
 		"""
-		self.checkLenghtEquality(multiplier_vector)
+		#self.checkLenghtEquality(multiplier_vector)
 
 		output_vector = []
 		for self_val, arg_val in zip(self, multiplier_vector):
@@ -234,7 +245,7 @@ class Vector(list):
 
 			Return: Vector
 		"""
-		self.checkLenghtEquality(devidor_vector)
+		#self.checkLenghtEquality(devidor_vector)
 
 		output_vector = []
 		for self_val, arg_val in zip(self, devidor_vector):
@@ -242,6 +253,18 @@ class Vector(list):
 
 		return Vector(output_vector)
 
+
+	def avgNorm(self):
+		"""
+		Normlized by getting deviding the value to the sum of the vector
+		"""
+		vec_sum = sum(self)
+		output_vector = []
+
+		for value in self:
+			output_vector.append(value / vec_sum)
+
+		return Vector(output_vector)
 
 
 	def minMaxNorm(self):
@@ -259,6 +282,7 @@ class Vector(list):
 		return Vector(normalized_arr)
 
 
+
 	def dotProd(self, vector_argument):
 		"""
 			Get the dot product of the two vector
@@ -267,6 +291,27 @@ class Vector(list):
 		"""
 		return self.multiplyVector(vector_argument).sum()
 
+
+	def exp(self):
+		"""
+			Exponentialized the values fo the vector
+
+			Return Vector
+		"""
+		E = 2.71828182846 
+		output_vector = []
+
+		for value in self:
+			output_vector.append(E ** value)
+
+		return Vector(output_vector)
+
+
+	def average(self):
+		"""
+			Returns scalar representing the average of the vector
+		"""
+		return (self.sum() / len(self))
 
 
 	def checkLenghtEquality(self, given_argument):
@@ -282,14 +327,13 @@ class Vector(list):
 
 
 
-	"""
-	def multiplyToVector(self, multiplier_vector):
-		"
+
+	def valueWiseMultiplcation(self, multiplier_vector):
+		"""
 		Return: Matrix
 
-		"" 
-		self.checkLenghtEquality(multiplier_vector)
-
+		"""
+		
 		output_matrix = []
 
 		for value in self:
@@ -297,7 +341,8 @@ class Vector(list):
 			for element in multiplier_vector:
 				row_vector.append(value * element)
 
-			output_vector.append(row_vector)
+			output_matrix.append(row_vector)
 
 		return output_matrix
-	"""
+
+
