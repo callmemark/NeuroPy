@@ -8,12 +8,11 @@ Description: Contains class to create simple but expandable neural network from 
 
 """
 
-
 from random import uniform
 from math import log, sqrt
 from VectorMethods import Vector
 from MatrixMethods import Matrix, Tensor3D
-import pprint
+from time import sleep
 import json
 try:
 	from tqdm import tqdm
@@ -21,10 +20,8 @@ except:
 	raise Exception("Missing required library tqdm: please install tqdm via 'pip install tqdm'")
 
 
-VERSION_CODE = "NeuroPy Version Alpha-0.0.12"
+VERSION_CODE = "NeuroPy Version Alpha-0.0.13"
 
-
-pp = pprint.PrettyPrinter(width = 41, compact = True)
 
 
 
@@ -119,6 +116,7 @@ class ActivationFunction():
 		"""
 		self.E = 2.71
 
+
 	def sigmoidFunction(self, x):
 		"""
 			This method perform a sigmoid function calculation
@@ -144,6 +142,7 @@ class ActivationFunction():
 			
 			Returns: Vector
 		"""
+
 		output_array = []
 		max_value_index = ouput_vector.index(max(ouput_vector))
 
@@ -167,6 +166,21 @@ class ActivationFunction():
 		return max(0, input_value)
 
 
+
+	def softMax(self, input_vector):
+		"""
+			Retun a normalized distribution that will have a sum of 1 form the given vector 
+
+			return Verctor
+		"""
+
+		exp_vector = Vector(input_vector).exp()
+		output_vector = []
+
+		for val_index in range(len(exp_vector)):
+			output_vector.append(exp_vector[val_index] / Vector(exp_vector).sum())
+
+		return output_vector
 
 
 
@@ -203,16 +217,34 @@ class ForwardPropagation(ActivationFunction):
 		biased_weighted_sum_set = self.applyBias(weighted_sum_matrix_set, bias_weight_matrix)
 
 		output_matrix = []
-		for weighted_sum  in weighted_sum_matrix_set:
-			act_func_vector = []
 
-			for input_val in weighted_sum:
-				if activation_function == "sigmoid":
-					act_func_vector.append(self.sigmoidFunction(input_val))
-				elif activation_function == "relu":
-					act_func_vector.append(self.relu(input_val))
+
+		try:
+			# Functions that accept scalar as argument
+			for weighted_sum  in weighted_sum_matrix_set:
+				act_func_vector = []
+
+				for input_val in weighted_sum:
+					if activation_function == "sigmoid":
+						act_func_vector.append(self.sigmoidFunction(input_val))
+
+					elif activation_function == "relu":
+						act_func_vector.append(self.relu(input_val))
+
+					else:
+						raise NameError("No conditons return true")
 
 			output_matrix.append(act_func_vector)
+
+		except NameError:
+			# funtions that accept and return a vector
+			for weighted_sum  in weighted_sum_matrix_set: 
+				if activation_function == "softmax":
+					output_matrix = [self.softMax(weighted_sum)]
+
+				else: # raise error if no condition returns true
+					err_msg = "No activation function found : " + activation_function
+					raise ValueError(err_msg)
 
 		return output_matrix
 
@@ -240,16 +272,6 @@ class ForwardPropagation(ActivationFunction):
 			Returns (Vector) : biased inputs
 		"""
 		return Matrix().matrixAddition(weighted_sum_matrix_set, bias_weight_matrix)
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -315,12 +337,9 @@ class WeightUpdates():
 						W = W - learning_rate * (dW + lambda * W) with Lw
 						W = W - learning_rate * dW  # Without L2
 		"""
-
-		# FLAG : BROKEN
-		print("\n\n prev_l_output_matrix >>> ", prev_l_output_matrix, "\n\n")
+		
 		delta_w_matrix = []
 		for prev_layer_output in prev_l_output_matrix:
-			print("\n\n prev_layer_output >>> ", prev_layer_output, "\n\n")
 
 			weight_adjustment = Matrix().transpose(Matrix().outerProduct(prev_layer_output, fwd_l_delta))
 			weight_update = Matrix().matrixAddition(init_weight, Matrix().matrixScalarMultiply(weight_adjustment, learning_rate)) 
@@ -371,6 +390,21 @@ class WeightUpdates():
 		return Vector(weight_matrix_update)
 
 
+	def softmaxWeightClaculation(self, alpha, fwd_l_delta, prev_l_output_matrix):
+		"""
+			calculate the weight for a layer with softmax activation function
+
+			Equation:
+			dw = alpha * np.dot(delta, L_prev.T)
+		"""
+		delta_w_matrix = []
+		for prev_l_output in prev_l_output_matrix:
+			neighbor_neuron_dprod = Matrix().outerProduct(fwd_l_delta, prev_l_output)
+			weight_adjustment = Matrix().matrixScalarMultiply(neighbor_neuron_dprod, alpha)
+
+			delta_w_matrix.append(weight_adjustment)
+
+		return delta_w_matrix
 
 
 
@@ -436,7 +470,7 @@ class DeltaCalculationMethods():
 		"""
 
 		calculated_delta_matrix = []
-		for output_vector_ind in prev_l_output_matrix: # FLAG : BROKEN
+		for output_vector_ind in prev_l_output_matrix: 
 			transposed_weight = Matrix().transpose(weight_matrix)
 
 			subtracted_arr = []
@@ -473,8 +507,7 @@ class DeltaCalculationMethods():
 			1. delta_j = dot(l_fl_weight_matrix, fwd_l_delta) * (l_output > 0)
 			2. delta_j = relu_derivative(z_j) * sum(w_jk * delta_k)
 		"""
-		# FLAG : BROKEN
-		# NEW CHANGES
+
 		calculated_delta_matrix = []
 		for l_output in prev_l_output_matrix:
 			relu_derivative = []
@@ -486,7 +519,7 @@ class DeltaCalculationMethods():
 
 			weight_delta_sum = Matrix().matrixSum(Matrix().matrixVectorMultiply(Matrix().transpose(l_fl_weight_matrix), fwd_l_delta))
 			delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
-			
+
 			calculated_delta_matrix.append(delta_vector)
 
 		
@@ -551,6 +584,23 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 
 				output_vector = Vector(fl_p_out_tensor[p_vector_index]).subtractVector(actual_label_matrix[p_vector_index]).multiplyVector(relu_derivative_vector)
 
+
+		elif activation_function == "softmax":
+			"""
+				Equation:
+				dy[softmax] = P * (1 - P)
+				delta[L] = (P - Y) * dy[softmax]]
+			"""
+			sfotmax_delta = []
+			for p_vector_index in range(len(fl_p_out_tensor)):
+				dy_softmax = Vector(fl_p_out_tensor[p_vector_index]).multiplyVector(Vector(fl_p_out_tensor[p_vector_index]).subtractScalar(1))
+
+				delta_vector = Vector(fl_p_out_tensor[p_vector_index]).subtractVector(actual_label_matrix[p_vector_index]).multiplyVector(dy_softmax)
+
+				sfotmax_delta.append(delta_vector)
+			
+			output_vector = Matrix().columnAverage(sfotmax_delta)[0]
+
 		else:
 			err_msg = "No activation function found : " + activation_function
 			raise ValueError(err_msg)
@@ -584,6 +634,10 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 					cross_entropy_calculation = y * log(p)
 				elif activation_function == "sigmoid":
 					cross_entropy_calculation = y * log(p) + (1 - y) * log(1 - p)
+				else:
+					err_msg = "Error calculating cross entropy loss. No activation function for " + str(activation_function)
+					raise ValueError(err_msg)
+					break 
 
 				output_vector.append(cross_entropy_calculation)
 
@@ -631,15 +685,30 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 				weight_update_matrix = self.applyWeightAdjustment(
 						initial_weight = init_weight, 
 						weight_adjustment = delta_w_vector, 
-						operation = "-"
+						operation = "+"
 					)
 
+		elif activation_function_method == "softmax":
+			# W = W - alpha * np.dot(delta, L_prev.T)
+			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
+				weight_adjustment_matrix = self.softmaxWeightClaculation(
+											alpha = alpha, 
+											fwd_l_delta = fwd_l_delta, 
+											prev_l_output_matrix = prev_l_output
+											)
+				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
 
+				weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = delta_w_vector, 
+						operation = "-"
+					)
 
 		if Matrix().getShape(weight_update_matrix) != Matrix().getShape(init_weight):
 			err_msg = "Calculated update weight is not equal to the initial weight with shape " + str(Matrix().getShape(weight_update_matrix)) + " Rather than " + str(Matrix().getShape(init_weight))
 
 			raise Exception(err_msg + "\n With delta_w_vector of >>> " + str(delta_w_vector), "\n weight_update_matrix >>> " + str(weight_update_matrix))
+
 
 		if get_updated_weight == True:
 			return Vector(weight_update_matrix)
@@ -722,7 +791,22 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 		elif activation_function == "sigmoid":
 			adjusted_biase = [Vector(l_delta).multiplyScalar(self.learning_rate)]
 
-		return Vector(adjusted_biase)
+		elif activation_function == "softmax":
+			bias_adjustment = Vector(l_delta).multiplyScalar(learning_rate)
+			adjusted_biase = [Vector(init_bias[0]).subtractVector(bias_adjustment)]
+
+
+		if Matrix().getShape(init_bias) == Matrix().getShape(adjusted_biase):
+			return adjusted_biase
+		elif Matrix().getShape(init_bias) != Matrix().getShape(adjusted_biase):
+			err_msg = "Error setting bias. Calculated shape is not equal to the initial bias shape: " + str(Matrix().getShape(init_bias) + " != " + str(Matrix().getShape(adjusted_biase)))
+
+			raise ValueError(err_msg)
+		else:
+			err_msg = "unknown error occured in adjustBiasWeight function"
+			raise Exception(err_msg)
+
+		
 		
 
 
@@ -816,7 +900,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 				batch_size (scalar int)			: The amount of batches of training data to be trained
 
 			"""
-			#self.printNetworkPrelimSummary(epoch, batch_size) # FLAG : TEMPORAY
+			self.printNetworkPrelimSummary(epoch, batch_size)
 			
 			# Devide the training data in batches
 			self.batch_array, self.answer_key_batch_array = self.devideBatches(training_data, labeld_outputs, batch_size)
@@ -830,7 +914,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 			# count the number of correct prediction to calculate accuracy of the model
 			correct_prediction = 0
 
-
+			sleep(1)
 			for _ in tqdm(range(epoch)):
 				for training_batch_set, labeld_batch_key in zip(self.batch_array, self.answer_key_batch_array):
 
@@ -852,6 +936,24 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						layer_activation_function = self.layer_size_vectors[layer_index][1]
 						
 						# create a layer where neuron activation and other transformation will handle
+						"""
+						try: # FLAG : TEMPORARY
+							print("\nlayer_index >>>",layer_index)
+							print("current_layer_input >>> ", Matrix().getShape(current_layer_input))
+							print("weights_set >>> ", Matrix().getShape(self.weights_set[layer_index]))
+							print("bias_weight_set >>> ", Matrix().getShape(self.bias_weight_set[layer_index]))
+							print("layer_activation_function >>> ", layer_activation_function)
+							print("###DONE###")
+						except:
+							print("\nlayer_index >>>",layer_index)
+							print("current_layer_input >>> ", current_layer_input)
+							print("weights_set >>> ", self.weights_set[layer_index])
+							print("bias_weight_set >>> ", self.bias_weight_set[layer_index])
+							print("layer_activation_function >>> ", layer_activation_function)
+							print("###DONE###")
+							raise Exception("Something wrong happen while fitting")
+						"""
+
 						current_layer_input = self.layerForwardPass(
 											input_matrix = current_layer_input,
 											weight_matrix = self.weights_set[layer_index], 
@@ -867,6 +969,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 
 					## Check if the model prediction was correct
+
 					for predicted_output, actual_output in zip(batch_layer_ouput_tensor[-1], batch_input_labeld_data):
 						final_prediction = ActivationFunction().argMax(predicted_output)
 						if final_prediction == actual_output:
@@ -895,7 +998,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 						layer_input_matrix = input_data
 						)
 
-			#self.printFittingSummary() FLAG : TEMPORARY
+			self.printFittingSummary()
 
 
 
@@ -909,8 +1012,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 	 			)
 		except Exception as err:
 			err_msg = "Error getting final layer data with a mesage: >>> " + str(err),
-			raise Exception()
-
+			raise Exception(err_msg)
 
 		# 2-3. Loop through the entire network
 		# 2. calculate and update weight to the current layer
@@ -918,55 +1020,42 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		fwd_l_d = fl_d # This delta value will be updated for every layer
 
 		for layer_index in range(len(self.layer_sizes) - 1, -1, -1):
-			layer_activation_function = self.layer_size_vectors[layer_index][1]
-			try:
-				self.bias_weight_set[layer_index] = self.adjustBiasWeight(
-									l_delta = fwd_l_d,
-									init_bias = self.bias_weight_set[layer_index],
-									learning_rate = self.learning_rate,
-									activation_function = layer_activation_function
-									)
+			layer_activation_function = self.layer_size_vectors[layer_index - 1][1]
 
-				if layer_index != 0: # if the layer is a hidden layer
-					l_w_update = self.updateLayerWeight(
-						alpha = self.learning_rate, 
-						fwd_l_delta = fwd_l_d, 
-						prev_l_output = layers_output_tensor[layer_index - 1], 
-						init_weight = self.weights_set[layer_index], 
-						activation_function_method = layer_activation_function 
-						)
-					self.weights_set[layer_index] = l_w_update
+			self.bias_weight_set[layer_index] = self.adjustBiasWeight(
+								l_delta = fwd_l_d,
+								init_bias = self.bias_weight_set[layer_index],
+								learning_rate = self.learning_rate,
+								activation_function = layer_activation_function
+								)
 
-				elif layer_index == 0: # if the layer is the input layer
-					l_w_update = self.updateLayerWeight(
-						alpha = self.learning_rate, 
-						fwd_l_delta = fwd_l_d, 
-						prev_l_output = layer_input_matrix, 
-						init_weight = self.weights_set[layer_index], 
-						activation_function_method = layer_activation_function
-						)
-					self.weights_set[layer_index] = l_w_update
-
-
+			if layer_index != 0: # if the layer is a hidden layer
+				l_w_update = self.updateLayerWeight(
+					alpha = self.learning_rate, 
+					fwd_l_delta = fwd_l_d, 
+					prev_l_output = layers_output_tensor[layer_index - 1], 
+					init_weight = self.weights_set[layer_index], 
+					activation_function_method = layer_activation_function 
+					)
+				self.weights_set[layer_index] = l_w_update
 				cld_l_d = self.getHiddenLayerDelta(
-						prev_l_output_matrix = layers_output_tensor[layer_index - 1],
-						weight = l_w_update,
-						fwd_l_delta = fwd_l_d,
-						activation_function = layer_activation_function
-						)
+					prev_l_output_matrix = layers_output_tensor[layer_index - 1],
+					weight = l_w_update,
+					fwd_l_delta = fwd_l_d,
+					activation_function = layer_activation_function
+					)
 
 				fwd_l_d = cld_l_d
-				
-				
-			except Exception as err:
-				print("ERROR in index: ", layer_index)
-				print("learning_rate >>> ", self.learning_rate, "\n", "fwd_l_d >>> ",fwd_l_d, "\n", "layers_output_tensor >>> ", layers_output_tensor[layer_index - 1], "weights_set[layer_index] >>> ", self.weights_set[layer_index])
-				raise Exception("Error")
 
-
-
-
-
+			elif layer_index == 0: # if the layer is the input layer
+				l_w_update = self.updateLayerWeight(
+					alpha = self.learning_rate, 
+					fwd_l_delta = fwd_l_d, 
+					prev_l_output = layer_input_matrix, 
+					init_weight = self.weights_set[layer_index], 
+					activation_function_method = layer_activation_function
+					)
+				self.weights_set[layer_index] = l_w_update
 
 
 
