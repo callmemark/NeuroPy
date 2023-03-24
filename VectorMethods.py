@@ -6,7 +6,7 @@ Description:
 	This module is made to work with NeurPy module but can work with other codes
 
 """
-
+from math import isnan
 
 class Vector(list):
 	def __init__(self, data):
@@ -346,3 +346,81 @@ class Vector(list):
 		return output_matrix
 
 
+
+	def clip(self, min_arg, max_arg):
+		"""
+			Limit value 
+		"""
+
+		output_vector = []
+
+		for val_index in range(len(self)):
+			if self[val_index] < min_arg:
+				output_vector.append(min_arg)
+			elif self[val_index] > max_arg:
+				output_vector.append(max_arg)
+			elif self[val_index] <= max_arg and self[val_index] >= min_arg:
+				output_vector.append(self[val_index])
+
+		return Vector(output_vector)
+
+
+	def notNaN(self):
+		"""
+			Check value in vector if it have a NaN value
+
+			Returns Boolean
+		"""
+		returned_value = True
+		for value_index in range(len(self)):
+			if isnan(self[value_index]) == True:
+				returned_value = False
+				break
+
+		return returned_value
+
+
+	def noInf(self):
+		"""
+			Check if there is infinity value in vector
+		"""
+		returned_value = True
+
+		for value_index in range(len(self)):
+			if self[value_index] == float("inf"):
+				returned_value = False
+				break
+
+		return returned_value
+
+
+
+	def isValid(self):
+		"""
+			Check if the vector contains nan And inf values
+		"""
+
+		
+
+		if self.notNaN() and self.noInf():
+			return True
+		elif not self.notNaN() and not self.noInf():
+			return False
+
+
+class Scalar():
+	def __init__(self):
+		pass
+
+
+	def clamp(self, variant, min_arg, max_arg):
+		"""
+			Clamp the value to be at or in the minimum and maximum value
+		"""
+
+		if variant <= min_arg:
+			return min_arg
+		elif variant >= max_arg:
+			return max_arg
+		elif variant > min_arg and variant < max_arg:
+			return variant

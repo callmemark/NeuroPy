@@ -7,37 +7,75 @@ Description:
 """
 
 from VectorMethods import Vector
-
+from math import isnan, log
 
 class Matrix():
 	def __init__(self):
 		pass
 
 
+	def isMatrixValid(self, matrix):
+		"""
+			Check if the matrix is valid meaning it have equal row and col and earch value homogeneous
+		"""
+
+		if self.isSquare(matrix) and self.isHomogenous(matrix) and self.notNaN(matrix) and self.noInf(matrix):
+			return True
+		else:
+			return False
+
+
+	def noInf(self, matrix):
+		"""
+			look at the elemtns of matrix to check if there is a infinite value
+		"""
+		returned_value = True
+		for vect_index in range(len(matrix)):
+			if Vector(matrix[vect_index]).noInf() == False:
+				returned_value = False
+				break
+
+		return returned_value
+
+
+
+
+	def isSquare(self, matrix):
+	    """
+	    Checks if a 2D matrix has equal row and column sizes.
+	    Returns:
+	        bool: True if matrix has equal row and column sizes, False otherwise
+	    """
+	    if not isinstance(matrix, list):
+	    	return False
+	    	
+	    num_rows = len(matrix)
+	    if num_rows == 0:
+	        return True
+	    num_cols = len(matrix[0])
+	    for row in matrix:
+	        if len(row) != num_cols:
+	            return False
+	    return True
+
 
 	def isHomogenous(self, matrix):
 	    """
 	    Check if a multidimensional array is homogenous (all elements have the same type).
-	    
-	    Args:
-	    - matrix (list): A multidimensional array to check.
-	    
 	    Returns:
-	    - True if the array is homogenous, False otherwise.
+	    	True if the array is homogenous, False otherwise.
 	    """
 	    if not isinstance(matrix, list):
-	        return True  # If matrix is not a list, it's homogenous by default
+	        return True  
 	    
 	    if len(matrix) == 0:
-	        return True  # An empty list is homogenous by default
-	    
-	    # Check if all elements of matrix have the same type
+	        return True 
+
 	    first_type = type(matrix[0])
 	    for element in matrix:
 	        if type(element) != first_type:
 	            return False
 	    
-	    # Recursively check if all sub-arrays are homogenous
 	    for sub_arr in matrix:
 	        if not self.isHomogenous(sub_arr):
 	            return False
@@ -45,18 +83,19 @@ class Matrix():
 	    return True
 
 
-
 	def matrixDotProd(self, matrix_01, matrix_02):
 		"""
 		Calcualate the dot product of matrix_01 argument with respect to each vector in the matrix_02 argument
 		Return matrix containing vector dot procuct
 		"""
+
 		output_matrix = []
 
 		for mtx_1_vec in matrix_01:
 			dprod_row = []
 			for mtx_2_T_vec in matrix_02:
 				dprod = Vector(mtx_1_vec).dotProd(mtx_2_T_vec)
+
 				dprod_row.append(dprod)
 			output_matrix.append(dprod_row)
 
@@ -453,12 +492,61 @@ class Matrix():
 		return self.transpose(self.rowAverage(self.transpose(matrix)))
 
 
+	def clip(self, matrix, min_arg, max_arg):
+		"""
+			Clip the vectors in matrix to given min and max value
+		"""
+		matrix_output = []
+
+		for vect_index in range(len(matrix)):
+			#print(matrix[vect_index])
+			matrix_output.append(Vector(matrix[vect_index]).clip(min_arg, max_arg))
+
+		return matrix_output
+
+
+	def notNaN(self, matrix):
+		"""
+			Check if ocntains a NaN value
+		"""
+		returned_value = True
+
+		for vect_index in range(len(matrix)):
+			if Vector(matrix[vect_index]).notNaN() == False:
+				returned_value = False
+				break
+
+		return returned_value
+
+
+	def log(self, matrix, direction = "+"):
+		"""
+			get the log of elemetments in array
+		"""
+		output_matrix = []
+
+		for vec_index in range(len(matrix)):
+			row_vect = []
+			for elem_index  in range(len(matrix[vec_index])):
+				if direction == "+":
+					row_vect.append(log(matrix[vec_index][elem_index]))
+				elif direction == "-":
+					row_vect.append(-log(matrix[vec_index][elem_index]))
+				else:
+					err_msg = "No operation found " + direction
+					raise ValueError(err_msg)
+
+			output_matrix.append(row_vect)
+
+		return output_matrix
+
+
+
 
 class Tensor3D():
 	def __init__(self):
 		#super().__init__()
 		pass
-
 
 	def columnAverage(self, tensor_3d):
 		if Matrix().isHomogenous(tensor_3d) == False:
@@ -480,22 +568,3 @@ class Tensor3D():
 
 		return output_matrix
 		
-
-"""
-sample = [
-	[
-		[-0.0013168128024718517, -0.0015882969718923222], 
-		[0.00011100034480006446, 0.00013388502237675858], 
-		[-0.0017202940949481763, -0.002074963044588745]
-	], 
-	[
-		[-0.0003060208449676299, -0.002369816269664959], 
-		[2.579593640314725e-05, 0.0001997629598921187], 
-		[-0.00039978792091073886, -0.003095945700986522]
-	]
-]
-
-
-
-Tensor3D().columnAverage(sample)
-"""
