@@ -9,7 +9,10 @@ Description: Contains class to create simple but expandable neural network from 
 """
 
 from random import uniform
-from math import log, sqrt
+from math import log, sqrt, isnan
+from VectorMethods import Vector, Scalar
+from MatrixMethods import Matrix, Tensor3D
+from time import sleep
 import json
 try:
 	from tqdm import tqdm
@@ -17,737 +20,13 @@ except:
 	raise Exception("Missing required library tqdm: please install tqdm via 'pip install tqdm'")
 
 
-"""
-class Math():
-	def __init__(self):
-		pass
+VERSION_CODE = "NeuroPy Version Alpha-0.0.13"
 
-	def getSqrt(self, num, decimal_place = 4):
 
-	    Calculates the square root of a given number
 
-	    Parameters:
-	    num (float)			:	The number whose square root needs to be calculated.
-	    decimal_place(int)	:	The amount of decimal places before roundoff
 
-	    Returns:
-	    float: The square root of the given number.
 
-	    
-	    if num < 0:
-	        raise ValueError("Error on function square_root: Square root of negative numbers is undefined")
-	    elif num == 0:
-	        return 0
-	    elif num > 0:
-	        guess = num / 2.0
-	        while True:
-	            new_guess = (guess + num / guess) / 2.0
-	            if abs(new_guess - guess) < 0.0001:
-	                return round(new_guess, decimal_place)
-
-	            guess = new_guess
-"""
-
-
-
-
-class ArrayMethods():
-	def __init__(self):
-		pass
-
-
-	def matrixVectorDotProd(self, matrix, vector):
-		"""
-			Calculate the dot product of a vector and a matrix
-
-			Parameters:
-				vector (list): A 1-dimensional list representing a vector.
-				matrix (list): A 2-dimensional list representing a matrix.
-
-			Returns (Vector) A vector representing the result of the dot product.
-		"""
-		if len(vector) != len(matrix[0]):
-			raise ValueError("The dimensions of the vector and matrix do not match.")
-
-		result = []
-		for i in range(len(matrix)):
-		    dot_product = 0
-		    for j in range(len(vector)):
-		        dot_product += vector[j] * matrix[i][j]
-		    result.append(dot_product)
-		    
-		return result
-
-
-	def vectorDotProduct(self, multiplicand_vector, multiplier_vector):
-		"""
-			calculate the dot product of the two vector 
-			
-			Argumemts:
-			multiplicand_vector	(Vector)	
-			multiplier_vector	(Vector)
-
-			Return (matrix) with the shape row = lenght(multiplicand_vector), col = len(multiplier_vector)
-		"""
-		output_matrix = []
-
-		for multiplicand_value in multiplicand_vector:
-			row_arr = []
-			for multiplier_value in multiplier_vector:
-				product = multiplicand_value * multiplier_value
-				row_arr.append(product)
-
-			output_matrix.append(row_arr)
-
-		return output_matrix
-
-
-
-	def matrixVectorMultiply(self, multiplicand_matrix, multiplicand_vecotr):
-		"""
-			multiply matrix to a vector
-			
-			Argumemts:
-			multiplicand_matrix	(Matrix) 
-			multiplicand_vecotr	(Vector)
-
-			Return (Matrix) A two dimensional matrix 
-		"""
-		output_array = []
-
-		for selected_row in multiplicand_matrix:
-			new_row = []
-			for index in range(len(selected_row)):
-				new_row.append(selected_row[index] * multiplicand_vecotr[index])
-			output_array.append(new_row)
-
-		return output_array
-
-
-
-	def getMatrixSumOfRow(self, matrix):
-		"""
-			caculate the sum of rows of a 2d matrix array
-			
-			Argumemts:
-			matrix	(Matrix)
-
-			Return Matrix
-		"""
-		final_arr = []
-
-		for selected_row in matrix:
-			sum_of_current_iter = 0
-			for value in selected_row:
-				sum_of_current_iter += value
-
-			final_arr.append([sum_of_current_iter])
-
-		return final_arr
-
-
-
-	def vectorMultiply(self, vector_array_01, vector_array_02):
-		"""
-			Multiply two 1d vector
-			
-			Argumemts:
-			vector_array_01	(1d vector Array)
-			vector_array_02 (1d vector Array)
-
-			Return vector array
-		"""
-		array_01_lenght = len(vector_array_01)
-		array_02_lenght = len(vector_array_02)
-
-		if array_01_lenght != array_02_lenght:
-			raise Exception("Error: Array are not equal where size is ", array_01_lenght, " != ", array_02_lenght)
-
-		output_array = []
-		loop_n = int((array_01_lenght + array_02_lenght) / 2)
-
-		for index in range(loop_n):
-			output_array.append(vector_array_01[index] * vector_array_02[index])
-
-		return output_array
-
-
-
-	def matrixAddition(self, matrix_01, matrix_02):
-		"""
-			add two matrix
-			
-			Argumemts:
-			matrix_01	(2d matrix Array)
-			matrix_02	(2d matrix Array)
-
-			Return 2d Matrix Array
-		"""
-
-		if len(matrix_01) != len(matrix_02) or len(matrix_01[0]) != len(matrix_02[0]):
-		    raise ValueError("Arrays must have the same shape")
-
-		result = [[0 for _ in range(len(matrix_01[0]))] for _ in range(len(matrix_01))]
-
-		for i in range(len(matrix_01)):
-			for j in range(len(matrix_01[0])):
-				result[i][j] = matrix_01[i][j] + matrix_02[i][j]
-
-		return result
-
-
-
-	def matrixSubtract(self, matrix_minuend, matrix_subtrahend):
-		"""
-			subtract two matrix
-			
-			Argumemts:
-			matrix_minuend	(2d matrix Array)
-			matrix_subtrahend	(2d matrix Array)
-
-			Return 2d Matrix Array
-		"""
-		if len(matrix_minuend) != len(matrix_subtrahend) or len(matrix_minuend[0]) != len(matrix_subtrahend[0]):
-			raise ValueError("Arrays must have the same shape")
-
-		result = [[0 for _ in range(len(matrix_minuend[0]))] for _ in range(len(matrix_minuend))]
-
-		for i in range(len(matrix_minuend)):
-			for j in range(len(matrix_minuend[0])):
-				result[i][j] = matrix_minuend[i][j] - matrix_subtrahend[i][j]
-
-		return result
-
-
-	def vectorSubtract(self, minuend_vector_array, subtrahend_vector_array):
-		"""
-			subtract two matrix
-			
-			Argumemts:
-			minuend_vector_array	(1d vector Array)
-			subtrahend_vector_array	(1d vector Array)
-
-			Return 1d vector Array
-		"""
-		subtracted_arr = []
-		minuend_arr_size = len(minuend_vector_array)
-		subtrahend_arr_size = len(subtrahend_vector_array)
-
-		if minuend_arr_size != subtrahend_arr_size:
-			raise Exception(str("Error on function 'vectorSubtract'. Arrays are not equal lenght with sizes " + str(minuend_arr_size) + " and " + str(subtrahend_arr_size)))
-
-		index_count = int((minuend_arr_size + subtrahend_arr_size) / 2)
-		for index in range(index_count):
-			subtracted_arr.append(minuend_vector_array[index] - subtrahend_vector_array[index])
-
-		return subtracted_arr
-
-
-	def flatten(self, matrix_arr):
-		"""
-			transform a matrix array into a 1d vector array
-			
-			Argumemts:
-			matrix_arr	(nd vector Array)
-
-			Return 1d vector Array
-		"""
-		flattened = []
-
-		if len(self.getShape(matrix_arr)) == 1:
-			return matrix_arr
-
-		for element in matrix_arr:
-		    if isinstance(element, list):
-		        flattened.extend(self.flatten(element))
-		    else:
-		        flattened.append(element)
-
-		return flattened
-
-
-	def getShape(self, array_arg):
-		"""
-			get the shape of vector / matrix array
-			
-			Argumemts:
-			array_arg	(nd Array)
-
-			Return 1d vector Array
-		"""
-		shape = []
-
-		while isinstance(array_arg, list):
-		    shape.append(len(array_arg))
-		    array_arg = array_arg[0]
-
-		return shape
-
-
-	def transpose(self, arr_arg):
-		""""
-			Transpose the given 2d matrix array swapping its elemtns positions
-
-			Arguements			:	arr_arg
-			Returns(Array) 		:	matrix array
-		"""
-
-		if len(self.getShape(arr_arg)) <= 1:
-			return arr_arg
-
-		shape = self.getShape(arr_arg)
-		transposed_list = [[None]*shape[0] for _ in range(shape[1])]
-
-		for i in range(shape[0]):
-		    for j in range(shape[1]):
-		        transposed_list[j][i] = arr_arg[i][j]
-
-		return transposed_list
-
-
-	def vectorSquare(self, vector_array):
-		""""
-			Transpose the given 2d matrix array swapping its elemtns positions
-
-			Arguements			:	arr_arg
-			Returns(Array) 		:	matrix array
-		"""
-		squared_arr = []
-		arr_shape = self.getShape(vector_array)
-		if len(arr_shape) != 1:
-			raise Exception("Error in function vectorSquare, Array should be one dimesion but have " + str(arr_shape))
-
-		for value in vector_array:
-			squared_arr.append(value ** 2)
-
-		return squared_arr
-
-
-	def vectorScalarMultiply(self, vector_array, multiplier_num):
-		""""
-			apply scalar multiplication to the given array using the given multiplier
-
-			Arguements:
-			vector_array (1d vector array)		:	1d vector array
-			multiplier_num (float) 				:	float
-
-			Returns: 1d vector array
-		"""
-		resulting_arr = []
-
-		for value in vector_array:
-			resulting_arr.append(value * multiplier_num)
-
-		return resulting_arr
-
-
-
-	# rename from matixScalaMultiply to matrixScalarMultiply
-	def matrixScalarMultiply(self, matrix, scalar_multiplier):
-		"""
-			Multiple a mtrix to a scalar value
-
-			Arguments:
-			matrix (matrix)					: 	The matrix that will be multiplied
-			scalar_multiplier (Scalar) 		:	The multiplier scalar valuee
-
-			Return (Matrix)
-		"""
-		output_array = []
-
-		for row in matrix:
-			col_val_sum = []
-			for col_val in row:
-				col_val_sum.append(col_val * scalar_multiplier)
-
-			output_array.append(col_val_sum)
-
-		return Array(output_array)
-
-
-
-	def matrixScalarDevision(self, matrix, scalar_devider):
-		output_array = []
-
-		for row in matrix:
-			col_val_sum = []
-			for col_val in row:
-				col_val_sum.append(col_val / scalar_devider)
-
-			output_array.append(col_val_sum)
-
-		return Array(output_array)
-
-
-
-	def matrixScalarSubtract(self, matrix, scalar_minuend):
-		output_array = []
-
-		for row in matrix:
-			col_val_sum = []
-			for col_val in row:
-				col_val_sum.append(col_val - scalar_minuend)
-
-			output_array.append(col_val_sum)
-
-		return Array(output_array)
-
-
-
-	def matrixAverage(self, ndMatrix):
-		"""
-			Calculate the matrix indide the list of matrix
-			
-			Arguments:
-			ndMatrix (Matrix)				: A list holding multiple matrix
-		"""
-
-		matrix_count = len(ndMatrix)
-		ind_matrix_count = len(ndMatrix[0])
-
-		ouput_matrix = []
-
-		for mtx in ndMatrix:
-			if len(ouput_matrix) == 0:
-				ouput_matrix = mtx
-				continue
-
-			n_vec = 0
-			for vector_index in range(len(mtx)):
-				n_vec += 1
-				ouput_matrix[vector_index] = Array(ouput_matrix[vector_index]).addArray(mtx[vector_index])
-
-			n_vec = 0
-
-		ouput_matrix = self.matrixScalarDevision(ouput_matrix, matrix_count)
-
-		return ouput_matrix
-
-
-	def matrixSum(self, matrix):
-		"""
-			Return (Scalar)
-		"""
-		vector_sum = 0
-		for vector in matrix:
-			vector_sum += Array(vector).sum()
-
-		return vector_sum
-
-
-
-
-
-
-
-
-
-
-
-class Array(list):
-	def __init__(self, data):
-		"""
-			Create new Array object to extend Python list functionality
-		"""
-
-		super().__init__(data)
-		#self.shape = (len(data),)
-
-		self.shape = self.getShape()
-
-
-	def transpose(self):
-		"""
-			Transpose the multidimensional this (Array) object swapping its elemtns positions
-
-			Arguements			:	Takes 0 argumnts
-			Returns(Array) 		:	Transposed version of this (Array) object
-		"""
-
-		shape = self.getShape()
-		if len(self.shape) == 1:
-			return Array(self)
-
-		transposed_list = [[None]*shape[0] for _ in range(shape[1])]
-
-		for i in range(shape[0]):
-			for j in range(shape[1]):
-				transposed_list[j][i] = self[i][j]
-
-		return Array(transposed_list)
-
-
-	def getShape(self):
-		"""
-			Get the shape of the this (Array) object
-
-			Arguments 		:	Takes 0 arguments
-			Returns(Array)	:	The hape of this (Array) objects shape
-		"""
-		shape = []
-		arr = self
-
-
-		while isinstance(arr, list):
-			shape.append(len(arr))
-			arr = arr[0]
-
-		self.shape = shape
-		return shape
-
-
-
-	def multiply(self, multiplier):
-		"""
-			Multiply this (Array) object
-
-			Arguments:
-			multiplier(float)		:	The number use to multiply each element in this Array
-
-			Return: Array
-
-		"""
-		array_product = []
-
-		for value in self:
-			array_product.append(value * multiplier)
-
-		return Array(array_product)
-
-
-
-	def add(self, addends):
-		"""
-			Add this (Array) object
-
-			Arguments:
-			addends(float)		:	The number use to Add each element in this Array
-
-			Return: Array
-
-		"""
-		addends_arr = []
-
-		for value in self:
-			addends_arr.append(value + addends)
-
-		return Array(addends_arr)
-
-
-
-	def subtract(self, subtrahend):
-		"""
-			Subtract this (Array) object
-
-			Arguments:
-			subtrahend(float)		:	The number use to Subtract each element in this Array
-
-			Return: Array
-
-		"""
-		difference = []
-
-		for value in self:
-			difference.append(value - subtrahend)
-
-		return Array(difference)
-
-
-	def sum(self):
-		"""
-			get the sum of all alements in array
-
-			Arguments: takes 0 arguments
-			Return: float
-		"""
-		total = 0
-		for value in self:
-			total += value
-
-		return total
-
-
-	def min(self):
-		"""
-			get the minimum or lowest value in this (Array) object
-
-			Arguments: takes 0 arguments
-			Return: float
-		"""
-		min_val = 0
-		for value in self:
-			if value < min_val:
-				min_val = value
-
-		return min_val
-
-
-	def max(self):
-		"""
-			get the maximum or highest value in this (Array) object
-
-			Arguments: takes 0 arguments
-			Return: float
-		"""
-		max_val = 0
-		for value in self:
-			if value > max_val:
-				max_val = value
-
-		return max_val
-
-
-	def mean(self):
-		"""
-			caculkate the mean value of this (Array) object
-
-			Arguments: takes 0 arguments
-			Return: float
-		"""
-		sum_of_arr = self.sum()
-		mean_val = sum_of_arr / len(self)
-
-		return mean_val
-
-
-	def squared(self):
-		"""
-			caculkate the squared value of every elements in this (Array) object
-
-			Arguments: takes 0 arguments
-			Return: Array
-		"""
-		squared_arr = []
-		for value in self:
-			squared_arr.append(value ** 2)
-
-		return Array(squared_arr) 
-
-
-	def std(self):
-		"""
-			caculate the standard deviation value of this (Array) object
-
-			Arguments: takes 0 arguments
-			Return: float
-		"""
-		#standard_dev = Math().sqrt(self.subtract(self.mean()).squared().sum() / len(self))
-		standard_dev = sqrt(self.subtract(self.mean()).squared().sum() / len(self))
-		return standard_dev
-
-
-
-	def addArray(self, addends_arr):
-		"""
-			Add two array 
-
-			Arguments:
-			addends_arr(Array / List)		:	The array use to add to this array
-
-			Return: Array
-		"""
-		sum_arry = []
-
-		if self.shape != Array(addends_arr).shape:
-			raise Exception("Error on function addArray, Values are not the same shape")
-
-		for index in range(len(self)):
-			sum_arry.append(self[index] + addends_arr[index])
-
-		return Array(sum_arry)
-
-
-
-	def vectorMultiply(self, multiplier_vector):
-		"""
-		Return: Matrix
-		""" 
-		output_vector = []
-
-		for value in self:
-			row_vector = []
-			for element in multiplier_vector:
-				row_vector.append(value * element)
-
-			output_vector.append(row_vector)
-
-		return Array(output_vector)
-
-
-
-	def minMaxNorm(self):
-		normalized_arr = []
-
-		for value in self:
-			norm = (value - self.max()) / (self.max() - self.min())
-			normalized_arr.append(norm)
-
-		return normalized_arr
-
-
-
-
-
-
-
-
-class WeightInitializationMethods():
-	def __init__(self):
-		"""
-			Methods to intializ random value generated using different mathematical functions
-
-			Arguments: Takes 0 arguments
-		"""
-		#super().__init__()
-		pass
-
-
-
-	def radomInitializer(self, min_f = 0, max_f = 1.0):
-		"""
-			Generate random number in range of given paramenter using basic calculation technique
-
-			Arguments: 
-			min_f (float) 	:	The minimum value limit
-			max_f (float)	:	The maximum value limit
-
-			Returns:float
-		"""
-		rwg = 2 * uniform(min_f, max_f) - 1
-
-		return rwg
-
-
-	def NormalizedXavierWeightInitializer(self, col_size, n_of_preceding_nodes, n_of_proceding_node):
-		"""
-			Generate random number using xavier weight intializer 
-
-			Arguments: 
-			col_size (float) 				:	the number of elements or weights to be generated since this will be a 1d array
-			n_of_preceding_nodes (Array)	:	The number of neurons where outputs will come from
-			n_of_proceding_node (Array)		:	The number of neurons that will accepts the outputs frrom the preceding neuro
-
-			Returns:Array
-		"""
-		n = n_of_preceding_nodes
-		m = n_of_proceding_node
-
-		sum_of_node_count = n + m
-
-		lower_range, upper_range = -(sqrt(6.0) / sqrt(sum_of_node_count)), (sqrt(6.0) / sqrt(sum_of_node_count))
-		rand_num = Array([uniform(0, 1) for i in range(col_size)])
-		scaled = rand_num.add(lower_range).multiply((upper_range - lower_range))
-
-		return Array(scaled)
-
-
-
-
-
-
-
-
-class WeightInitializer(WeightInitializationMethods):
+class WeightInitializer():
 	def __init__(self):
 		"""
 			This class contains different methods to generate weights tot thee neural network
@@ -767,20 +46,20 @@ class WeightInitializer(WeightInitializationMethods):
 			max_f (float)	:	The maximum value limit
 			
 
-			Returns:Array
+			Returns:Vector
 		"""
 		final_weight_arr = []
 		row = dim[0]
 		col = dim[1]
 
 		for i in range(row):
-			col_arr = []
+			col_vector = []
 			for j in range(col):
-				col_arr.append(self.radomInitializer(min_f, max_f))
+				rng = 2 * uniform(min_f, max_f) - 1
+				col_vector.append(rng)
 
-			final_weight_arr.append(col_arr)
-
-		return Array(final_weight_arr)
+			final_weight_arr.append(col_vector)
+		return Vector(final_weight_arr)
 
 
 	def initNormalizedXavierWeight(self, dim, n_of_preceding_nodes, n_of_proceding_node):
@@ -789,21 +68,34 @@ class WeightInitializer(WeightInitializationMethods):
 
 			Arguments: 
 			dim (list)		: 	A two lenght list contains the row and columnn [row, col] or shape of the generated weight
-			n_of_preceding_nodes (Array)	:	The number of neurons where outputs will come from
-			n_of_proceding_node (Array)		:	The number of neurons that will accepts the outputs frrom the preceding neuro
+			n_of_preceding_nodes (Vector)	:	The number of neurons where outputs will come from
+			n_of_proceding_node (Vector)		:	The number of neurons that will accepts the outputs frrom the preceding neuro
 
-			Returns:Array
+			Returns:Vector
 		"""
-
 		final_weight_arr = []
 		row = dim[0]
 		col = dim[1]
 
 		for row_count in range(row):
-			data = self.NormalizedXavierWeightInitializer(col, n_of_preceding_nodes, n_of_proceding_node)
-			final_weight_arr.append(data)
 
-		return Array(final_weight_arr)
+			n = n_of_preceding_nodes
+			m = n_of_proceding_node
+			sum_of_node_count = n + m
+			lower_range, upper_range = -(sqrt(6.0) / sqrt(sum_of_node_count)), (sqrt(6.0) / sqrt(sum_of_node_count))
+			rand_num = Vector([uniform(0, 1) for i in range(col)])
+			scaled = rand_num.addScalar(lower_range).multiplyScalar((upper_range - lower_range))
+
+			final_weight_arr.append(scaled)
+
+		return Vector(final_weight_arr)
+
+
+
+
+
+
+
 
 
 
@@ -822,6 +114,7 @@ class ActivationFunction():
 		"""
 		self.E = 2.71
 
+
 	def sigmoidFunction(self, x):
 		"""
 			This method perform a sigmoid function calculation
@@ -832,10 +125,8 @@ class ActivationFunction():
 
 			Returns: float
 		"""
-		x = x
 		result = 1 / (1 + self.E ** -x)
-
-		return result
+		return round(result, 7)
 
 
 	def argMax(self, ouput_vector):
@@ -845,10 +136,10 @@ class ActivationFunction():
 			Arguments: 
 			weight_matrix (Matrix) 	: The array that will be transformed into a new array
 			
-			Returns: Array
+			Returns: Vector
 		"""
-		output_array = []
 
+		output_array = []
 		max_value_index = ouput_vector.index(max(ouput_vector))
 
 		for index in range(len(ouput_vector)):
@@ -857,7 +148,7 @@ class ActivationFunction():
 			elif index != max_value_index:
 				output_array.append(0)
 
-		return Array(output_array)
+		return Vector(output_array)
 
 
 
@@ -868,10 +159,29 @@ class ActivationFunction():
 			input_value (Scalar / float) 		:  value from the weighted sum of the input
 			return (Scalar / float)
 		"""
-		if input_value > 0:
-			return input_value
-		elif input_value <= 0:
-			return 0.0
+		return max(0.0, input_value)
+
+
+
+	def softMax(self, input_vector):
+		"""
+			Retun a normalized distribution that will have a sum of 1 form the given vector 
+
+			return Verctor
+		"""
+
+		exp_vector = Vector(input_vector).exp()
+		output_vector = []
+
+		for val_index in range(len(exp_vector)):
+			output_vector.append(exp_vector[val_index] / Vector(exp_vector).sum())
+
+		return output_vector
+
+
+
+
+
 
 
 
@@ -884,109 +194,111 @@ class ForwardPropagation(ActivationFunction):
 	def __init__(self):
 		"""
 			This class contains different methods for neural network forward propagation
-
 			Arguments: takes 0 arguments
 		"""
 		super().__init__()
 
 
-	def fowardPropagation(self, input_value, weight_value, bias_weight, activation_function):
+	def layerForwardPass(self, input_matrix, weight_matrix, bias_weight_matrix, activation_function):
 		"""
 			Creates a nueral network layer
-
 			Arguments: 
-			input_value (Array) 	: 	testing inputs 
-			weight_value (Array)	:	The corresponding weight to this layer
-			bias_weight (Array)		:	The weight of the bias for this layer
+			input_value (matrix) 	: 	testing inputs 
+			weight_value (matrix)	:	The corresponding weight to this layer
+			bias_weight (matrix)		:	The weight of the bias for this layer
 			
-			Returns (Array) : The ouput of the this layer
+			Returns (Vector) : The ouput of the this layer
 		"""
-		weighted_sum = self.getWeightedSum(input_value, weight_value)
-		biased_weighted_sum = Array(weighted_sum).addArray(ArrayMethods().flatten(bias_weight))
-
-		if activation_function == "sigmoid":
-			result = self.sigmoidNeuronActivation(biased_weighted_sum)
-		elif activation_function == "relu":
-			result = self.reluNeuronActivation(biased_weighted_sum)
-
-		return Array(result)
-
-
-
-	def reluNeuronActivation(self, weighted_sum_vector):
+		# FLAG : TEMPORARY
 		"""
-			Activated neurons using the relu activation function
-			
-			Arguments: 
-			input_vector (Vector) 	:	the weighted sum
+		if not Matrix().isMatrixValid(input_matrix):
+			err_msg = "On method 'layerForwardPass' Argument input_matrix is not a valid matrix with value " + str(input_matrix)
+			raise ValueError(err_msg)
 
-			returns (Vector)
-		"""
-		output_vector = []
+		if not Matrix().isMatrixValid(weight_matrix):
+			err_msg = "On method 'layerForwardPass' Argument weight_matrix is not a valid matrix with value " + str(weight_matrix)
+			raise ValueError(err_msg)
 
-		for input_value in weighted_sum_vector:
-			output_vector.append(self.relu(input_value))
-
-		return output_vector
-
-
-
-	def sigmoidNeuronActivation(self, input_vector):
-		"""
-			Handles neuron activation
-
-			Arguments: 
-			input_vector (Matrix) 	: 	Expects the matrix of weighted sum 
-			
-			Returns (Matrix)
+		if not Matrix().isMatrixValid(bias_weight_matrix):
+			err_msg = "On method 'layerForwardPass' Argument bias_weight_matrix is not a valid matrix with value " + str(bias_weight_matrix)
+			raise ValueError(err_msg)
 		"""
 
-		result = []
-		for input_val in input_vector:
-			result.append(self.sigmoidFunction(input_val))
+		weighted_sum_matrix_set = self.getWeightedSum(weight_matrix, input_matrix)
+		biased_weighted_sum_set = self.applyBias(weighted_sum_matrix_set, bias_weight_matrix)
 
-		return result
+		#print("input_matrix >>> ", Matrix().getShape(input_matrix))
+		#print("weighted_sum_matrix_set >>> ", weighted_sum_matrix_set)
+		output_matrix = []
 
 
-	def getWeightedSum(self, input_arr, weight_arr):
+		try:
+			# Functions that accept scalar as argument
+			loop_count = 0 
+			for weighted_sum  in weighted_sum_matrix_set:
+				act_func_vector = []
+				
+				for input_val in weighted_sum:
+					if activation_function == "sigmoid":
+						sigmoid_output = self.sigmoidFunction(input_val)
+						act_func_vector.append(sigmoid_output)
+
+					elif activation_function == "relu":
+						relu_output = self.relu(input_val)
+						act_func_vector.append(relu_output)
+
+					else:
+						raise NameError("No conditons return true")
+
+				if Vector(act_func_vector).notNaN() == False:
+					err_msg = "Cant append vector containing NaN value " + str(act_func_vector)
+					raise Exception(err_msg)
+
+
+				loop_count += 1
+				output_matrix.append(act_func_vector)
+
+
+		except NameError:
+			# funtions that accept and return a vector
+			for weighted_sum  in weighted_sum_matrix_set: 
+				if activation_function == "softmax":
+					output_matrix = [self.softMax(weighted_sum)]
+
+				else: # raise error if no condition returns true
+					err_msg = "No activation function found : " + activation_function
+					raise ValueError(err_msg)
+
+		#print("output_matrix >>> ", output_matrix)
+		return output_matrix
+
+
+
+	def getWeightedSum(self, weight_matrix, input_matrix):
 		"""
 			Caculate weighted sum of the incoming input
-
 			Arguments: 
-			input_arr (Array) 	: 	Inputs eigther from a layer ouput or the main testing data
-			weight_arr (Array)	: 	The generated weight
-			
-			Returns (Array) : Weighted sum 
+			input_arr (matrix) 	: 	Inputs eigther from a layer ouput or the main testing data
+			weight_arr (matrix)	: 	The generated weight
+			Returns (matrix) : Weighted sum 
 		"""
-
-		weighted_sum_arr = []
-		for row in weight_arr:
-			sum_of_product = 0
-			for index in range(len(row)):
-				sum_of_product += (row[index] * input_arr[index])
-
-			weighted_sum_arr.append(sum_of_product)
-
-		return weighted_sum_arr
+		returned_matrix = Matrix().matrixDotProd(input_matrix, weight_matrix)
+		return returned_matrix
 
 
-	def applyBias(self, bias_weight_arr, weighted_sum_arr):
+
+
+	def applyBias(self, weighted_sum_matrix_set, bias_weight_matrix):
 		"""
 			apply the bias to the incoming inputs to the recieving neurons layer
 
 			Arguments: 
-			bias_weight_arr (Array) 		: 	weights of the bias to be added to the incoming inputs
-			weighted_sum_arr (Array)		: 	The generated weight
+			bias_weight_arr (Vector) 		: 	weights of the bias to be added to the incoming inputs
+			weighted_sum_arr (Vector)		: 	The generated weight
 			
-			Returns (Array) : biased inputs
+			Returns (Vector) : biased inputs
 		"""
-		return Array(weighted_sum_arr).add(bias_weight_arr)
-
-
-
-
-
-
+		return Matrix().matrixAddition(weighted_sum_matrix_set, bias_weight_matrix)
 
 
 
@@ -1001,7 +313,7 @@ class WeightUpdates():
 		super().__init__()
 
 
-	def sigmoidWeightCalculation(self, alpha, fwd_l_delta, prev_l_output, init_weight):
+	def sigmoidWeightCalculation(self, alpha, fwd_l_delta, prev_l_output_matrix, init_weight):
 		""" 
 			Calculate and return an array of floats that is intended to use for calibrating the weights of the 
 			Neural network
@@ -1015,80 +327,86 @@ class WeightUpdates():
 			Returns: (Matrix) Returns the updated weight of the given initial weight value
 
 			formula:
-			weight_ajustments = -learning_rate * [vectorDotProduct(fwd_l_delta, prev_l_output)]
+				weight_ajustments = -learning_rate * [outerProduct(fwd_l_delta, prev_l_output)]
 		"""
-		neighbor_neuron_dprod = self.vectorDotProduct(fwd_l_delta, prev_l_output)
 
 		weight_adjustment_matrix = []
-		for selected_row in neighbor_neuron_dprod:
-			result_row = []
 
-			for col_val in selected_row:
-				product = alpha * col_val
-				result_row.append(product)
+		for prev_l_output in prev_l_output_matrix:
+			neighbor_neuron_dprod = Matrix().outerProduct(fwd_l_delta, prev_l_output)
 
-			weight_adjustment_matrix.append(result_row)
+			weight_set = []
+			for selected_row in neighbor_neuron_dprod:
+				result_row = []
+
+				for col_val in selected_row:
+					product = alpha * col_val
+					result_row.append(product)
+
+				weight_set.append(result_row)
 
 
-		#weight_update_matrix = self.applyWeightAdjustment(
-		#				initial_weight = init_weight, 
-		#				weight_adjustment = weight_adjustment_matrix, 
-		#				operation = "+"
-		#			)
+			weight_adjustment_matrix.append(weight_set)
 
-		#return weight_update_matrix
 		return weight_adjustment_matrix
 
 
 
-	def sigmoidL2RegularizationWeightUpdate(self, learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight):
-		"""
-			Apply the l2 regularization when calculating the weights of the layers
 
-			Aguemtns:
-			learning_rate (float)			: The models learning rate
-			delta_n (Vector)				: The strenght of the hidden layer recieving from the weihts being update
-			prev_layer_output (Matrix)		: The output of the sactivation function of the previos layer
-			l2_lambda (float) 				: L2 penalty
-			intial_weight (matrix)			: The initial weight
-
-			return matrix with values representing the amount to change the weight
- 
-		"""
-
-		# delta_w = alpha * (delta * X.T) + lambda * W
-		delta_w = self.matrixAddition(
-								Array(delta_n).vectorMultiply(Array(prev_layer_output).multiply(learning_rate)), 
-								self.matrixScalarMultiply(intial_weight, l2_lambda)
-								)
-		
-
-		# W = W - (alpha * dW + lambda * W)
-		weight_matrix_update = self.matrixSubtract(
-								intial_weight,
-								self.matrixAddition(
-									self.matrixScalarMultiply(delta_w, learning_rate), 
-									self.matrixScalarMultiply(intial_weight, l2_lambda)
-									)
-								) 
-
-		return Array(weight_matrix_update)
-
-
-
-
-
-	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output, init_weight):
+	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output_matrix, init_weight, regularization_method = "none", lamb_red = 0.001):
 		"""
 			calculate and update the weights without any regularization
-			
-			Equation: 	dW = learning_rate * delta[l] [x] X.T)
-						W = W - (alpha * dw)
-		"""
-		weight_adjustment = self.matrixScalarMultiply(self.vectorDotProduct(fwd_l_delta, prev_l_output), learning_rate)
-		weight_update = self.matrixSubtract(init_weight, self.matrixScalarMultiply(weight_adjustment, learning_rate)) 
+			Equation:
+				dW = dot(output[l], delta)
+				W = W - (alpha / m) * dW # No regularization
+				W = W - (alpha / m) * dW + (lambda / m) * W # with regularization
 
-		return weight_update
+		"""
+		delta_w_matrix = []
+
+		for prev_layer_output in prev_l_output_matrix:
+
+			d_W = Matrix().transpose(Matrix().outerProduct(prev_layer_output, fwd_l_delta))
+			
+			if regularization_method == "none":
+				weight_update = Matrix().matrixScalarMultiply(d_W, (learning_rate / len(prev_l_output_matrix)))
+
+			elif regularization_method ==  "L2":
+				reg_mthd_qtnt = (lamb_red / len(prev_l_output_matrix))
+				reg_mthd = Matrix().matrixScalarMultiply(init_weight, reg_mthd_qtnt)
+
+				weight_update = Matrix().matrixAddition(reg_mthd, d_W)
+
+			
+
+			delta_w_matrix.append(weight_update)
+		
+		return delta_w_matrix
+
+
+
+
+
+	def softmaxWeightCalculation(self, alpha, fwd_l_delta, prev_l_output_matrix):
+		"""
+			calculate the weight for a layer with softmax activation function
+
+			Equation:
+			dw = alpha * np.dot(delta, L_prev.T)
+		"""
+		delta_w_matrix = []
+		for prev_l_output in prev_l_output_matrix:
+			neighbor_neuron_dprod = Matrix().outerProduct(fwd_l_delta, prev_l_output)
+			weight_adjustment = Matrix().matrixScalarMultiply(neighbor_neuron_dprod, alpha)
+
+			delta_w_matrix.append(weight_adjustment)
+
+		return delta_w_matrix
+
+
+
+
+
 
 
 
@@ -1098,17 +416,21 @@ class WeightUpdates():
 			Apply the adjustments of the weights to the initial weight to update its value by getting the sum of the two array
 
 			Arguments:
-			initial_weight (List / Array)			:	The weights value that is used in forward propagation
-			weight_adjustment  (List / Array)		:	The value used to add to the initial weight
+			initial_weight (List / Vector)			:	The weights value that is used in forward propagation
+			weight_adjustment  (List / Vector)		:	The value used to add to the initial weight
 
-			Returns: Array
+			Returns: Vector
 		"""
 		if operation == "+":
-			returned_value = self.matrixAddition(initial_weight, weight_adjustment)
+			returned_value = Matrix().matrixAddition(initial_weight, weight_adjustment)
 		elif operation == "-":
-			returned_value = self.matrixSubtract(initial_weight, weight_adjustment)
+			returned_value = Matrix().matrixSubtract(initial_weight, weight_adjustment)
 
-		return Array(returned_value)
+		return Vector(returned_value)
+
+
+
+
 
 
 
@@ -1129,48 +451,46 @@ class DeltaCalculationMethods():
 	# weight_matrix 
 	# proceding_neuron_output_matrix to fwd_l_delta
 
-	def sigmoidDeltaCalculation(self, l_output, weight_matrix, fwd_l_delta):
+
+	def sigmoidDeltaCalculation(self, prev_l_output_matrix, weight_matrix, fwd_l_delta):
 		"""
 			Calculate the delta of the a layer using sigmoid derivative
 
 			Arguments: 
-				l_output (vector) 				:	The output of the layer or the ouput of the sigmoid function in that layer
+				output_vector_ind (vector) 				:	The output of the layer or the ouput of the sigmoid function in that layer
 				weight_matrix (matrix)			:	Updated weight matrix next to the current layer being update
 				proceding_neuron_output_matrix (matrix)  (ith_layer + 1) 
 
 			Return (Vertor) Returns the calculated delta of the layer
 
-			Equation : transpose(weight_matrix) matx_mult(fwd_l_delta) * (l_output (1 - l_output)))
+			Equation : transpose(weight_matrix) matx_mult(fwd_l_delta) * (output_vector_ind (1 - output_vector_ind)))
 		"""
 
+		calculated_delta_matrix = []
+		for output_vector_ind in prev_l_output_matrix: 
+			transposed_weight = Matrix().transpose(weight_matrix)
 
-		"""
-		neuron_strenghts = self.vectorMultiply(
-			self.flatten(self.getMatrixSumOfRow(self.matrixVectorMultiply(self.transpose(weight_matrix), fwd_l_delta))), 
-			ArrayMethods().vectorMultiply(l_output, Array(l_output).subtract(1))
-			)
-		"""
+			subtracted_arr = []
+			for neuron_val in output_vector_ind:
+				subtracted_arr.append(1 - neuron_val)
 
-		transposed_weight = self.transpose(weight_matrix)
+			product_arr = []
+			for index in range(len(output_vector_ind)):
+				product_arr.append(output_vector_ind[index] * subtracted_arr[index])
 
-		subtracted_arr = []
-		for neuron_val in l_output:
-			subtracted_arr.append(1 - neuron_val)
+			dot_product_arr = Matrix().matrixVectorMultiply(transposed_weight, fwd_l_delta)
+			sum_of_rows_arr = Matrix().getSumOfRow(dot_product_arr)
+			#neuron_delta = Matrix().vectorMultiply(Matrix().flatten(sum_of_rows_arr), product_arr)
+			neuron_delta = Vector(Matrix().flatten(sum_of_rows_arr)).multiplyVector(product_arr)
 
-		product_arr = []
-		for index in range(len(l_output)):
-			product_arr.append(l_output[index] * subtracted_arr[index])
+			calculated_delta_matrix.append(neuron_delta)
 
-		dot_product_arr = self.matrixVectorMultiply(transposed_weight, fwd_l_delta)
-		sum_of_rows_arr = self.getMatrixSumOfRow(dot_product_arr)
-		neuron_strenghts = self.vectorMultiply(self.flatten(sum_of_rows_arr), product_arr)
-
-
-		return Array(neuron_strenghts)
+		
+		return Matrix().columnAverage(calculated_delta_matrix)[0]
 
 
 
-	def reluDeltaCalculation(self, l_fl_weight_matrix, fwd_l_delta, l_output):
+	def reluDeltaCalculation(self, l_fl_weight_matrix, fwd_l_delta, prev_l_output_matrix):
 		"""
 			Calculate the delta of a layer using the dewrivative of the relu activation function
 
@@ -1180,33 +500,47 @@ class DeltaCalculationMethods():
 			l_output (Vector)					: 	The ouput of the current layer
 
 			Return: (Vector)
-			Equation : dot(l_fl_weight_matrix, fwd_l_delta) * (l_output > 0)
+			Equation : 
+			1. delta_j = dot(l_fl_weight_matrix, fwd_l_delta) * (l_output > 0)
+			2. delta_j = relu_derivative(z_j) * sum(w_jk * delta_k)
 		"""
 
-		dy_l_output = []
+		calculated_delta_matrix = []
 
-		for value in l_output:
-			if value > 0:
-				dy_l_output.append(1)
-			elif value <= 0:
-				dy_l_output.append(0)
+		# Relu derivative where x = 1 if x > 0
+		for l_output in prev_l_output_matrix:
+			relu_derivative = []
+			for value in l_output:
+				if value > 0:
+					relu_derivative.append(1)
+				elif value <= 0:
+					relu_derivative.append(0)
 
-
-		delta_vector = ArrayMethods().vectorMultiply(
-			ArrayMethods().matrixVectorDotProd(
-				Array(l_fl_weight_matrix).transpose(), 
-				fwd_l_delta), 
-				dy_l_output
-			)
-
-		return delta_vector
+			weight_delta_sum = Matrix().matrixSum(Matrix().matrixVectorMultiply(Matrix().transpose(l_fl_weight_matrix), fwd_l_delta))
 
 
+			delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
+			calculated_delta_matrix.append(delta_vector)
+
+		output_vector = Matrix().columnAverage(calculated_delta_matrix)[0]
+		return output_vector
 
 
 
 
-class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
+
+
+
+
+
+
+
+
+
+
+
+# HERE 
+class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 	def __init__(self, learning_rate = -0.01):
 		"""
 			This class handles the backpropagation acalculation methods
@@ -1216,72 +550,116 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 
 
 
-	def getCrossEntropyLoss(self, predicted_ouputs_vector, actual_label_vector, activation_function):
+	def getFinalLayerDelta(self, fl_p_out_tensor, actual_label_matrix, activation_function):
+		"""
+			Calculate the final layer neuron strenghts
+
+			Arguments:
+			fl_p_out_tensor (matrix)				:	Final output that is calculated by sigmoid function
+			actual_label_matrix (List / Vector)	:	The final ouput that is produced by argmax function
+
+			Returns: Vector
+		"""
+
+		output_vector = []
+
+		if activation_function == "sigmoid":
+			delta_matrix = []
+			for p_vect_index in range(len(fl_p_out_tensor)):
+				delta_matrix.append(Vector(fl_p_out_tensor[p_vect_index]).subtractVector(actual_label_matrix[p_vect_index]))
+
+			output_vector = Matrix().columnAverage(delta_matrix)[0]
+
+
+
+		elif activation_function == "relu":
+			relu_derivative_vector = []
+			for p_vector_index in range(len(fl_p_out_tensor)):
+				for value in fl_p_out_tensor[p_vector_index]:
+					## relu derivative
+					if value > 0:
+						relu_derivative_vector.append(1)
+					elif value <= 0:
+						relu_derivative_vector.append(0)
+
+				output_vector = Vector(fl_p_out_tensor[p_vector_index]).subtractVector(actual_label_matrix[p_vector_index]).multiplyVector(relu_derivative_vector)
+
+
+		elif activation_function == "softmax":
+			"""
+				Equation:
+				dy[softmax] = P * (1 - P)
+				delta[L] = (P - Y) * dy[softmax]]
+			"""
+			sfotmax_delta = []
+			for p_vector_index in range(len(fl_p_out_tensor)):
+				dy_softmax = Vector(fl_p_out_tensor[p_vector_index]).multiplyVector(Vector(fl_p_out_tensor[p_vector_index]).subtractScalar(1))
+
+				delta_vector = Vector(fl_p_out_tensor[p_vector_index]).subtractVector(actual_label_matrix[p_vector_index]).multiplyVector(dy_softmax)
+
+				sfotmax_delta.append(delta_vector)
+			
+			output_vector = Matrix().columnAverage(sfotmax_delta)[0]
+
+		else:
+			err_msg = "No activation function found : " + activation_function
+			raise ValueError(err_msg)
+
+
+		return Vector(output_vector)
+
+
+
+	def getCrossEntropyLoss(self, predicted_ouput_matrix, actual_label_matrix, activation_function):
 		"""
 			This method is made to calculate the coss entropy loss for the final layer
 
 			Arguments:
-			predicted_ouputs_vector (Vector) (p)		:	Networks final layer or prediction
-			actual_label_vector (Vector) (y)	:	The actual label for the given problem
+			predicted_ouputs_matrix (Vector) (p)		:	Networks final layer or prediction
+			actual_label_matrix (Vector) (y)	:	The actual label for the given problem
 
 			Return (Vector) calculated loss
 
 			Equation:
 				Softamx : CE = -∑(y * log(softmax(z)))
 				Sigmoid: CE = - ∑(y * log(sigmoid(z)) + (1-y) * log(1-sigmoid(z)))
-
+				batch : CE = -1/m * sum(sum(y * log(y_hat) + (1-y) * log(1-y_hat)))
 				Where:
 					z = predicted probability distribution
 		"""
+		clam_val = 1e-7
+		for predicted_output_vector, actual_label_vector in zip(predicted_ouput_matrix, actual_label_matrix):
+			output_vector = []
 
-		output_array = []
-		for val_index in range(len(predicted_ouputs_vector)):
-			y = actual_label_vector[val_index]
-			p = predicted_ouputs_vector[val_index]
+			for p, y in zip(predicted_output_vector, actual_label_vector):
+				if activation_function == "softmax":
+					try:
+						cross_entropy_calculation = y * log(Scalar().clamp(p, clam_val, 1-clam_val))
+					except:
+						err_msg = "Math domain error with given value of  p = " + str(p) + " from vector : " + str(predicted_output_vector)
+						raise Exception(err_msg)
+				elif activation_function == "sigmoid":
+					cross_entropy_calculation = y * log(p) + (1 - y) * log(1 - p)
+				else:
+					err_msg = "Error calculating cross entropy loss. No activation function for " + str(activation_function)
+					raise ValueError(err_msg)
+					break 
 
-			if activation_function == "softmax":
-				cross_entropy_calculation = y * log(p) # Wihtout getting the sum 
-			elif activation_function == "sigmoid":
-				cross_entropy_calculation = y * log(p) + (1 - y) * log(1 - p)
+				output_vector.append(cross_entropy_calculation)
 
-
-			output_array.append(cross_entropy_calculation)
-		
-		return output_array
-
-
-
-		
-
-
-
-	def getFinalLayerDelta(self, predicted_ouputs_vector, actual_label_vector):
-		"""
-			Calculate the final layer neuron strenghts
-
-			Arguments:
-			predicted_ouputs_vector (List / Array)				:	Final output that is calculated by sigmoid function
-			actual_label_vector (List / Array)	:	The final ouput that is produced by argmax function
-
-			Returns: Array
-
-		"""
-		#returned_value = Array(self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)).squared()
-		returned_value = self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)
-		return Array(returned_value)
+		return Vector(output_vector).sum()
 
 
 
 
+	
 
 	def updateLayerWeight(self, alpha, fwd_l_delta, prev_l_output, init_weight, activation_function_method, get_updated_weight = True):
 		
 		"""
 			Update weight matrix
 			Arguemnts:
-
-
-			get_weight_update (Boolean)					: If True the function will return the updated weight matrix, If False will return the Update matrix instead of the updated weight 
+			get_weight_update (Boolean)		: If True the function will return the updated weight matrix, If False will return the Update matrix instead of the updated weight 
 		"""
 		
 		if activation_function_method == "sigmoid":
@@ -1289,63 +667,90 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 				weight_adjustment_matrix = self.sigmoidWeightCalculation(
 											alpha = alpha, 
 											fwd_l_delta = fwd_l_delta, 
-											prev_l_output = prev_l_output, 
+											prev_l_output_matrix = prev_l_output, 
 											init_weight = init_weight
 											)
 
+				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
 				weight_update_matrix = self.applyWeightAdjustment(
 						initial_weight = init_weight, 
-						weight_adjustment = weight_adjustment_matrix, 
+						weight_adjustment = delta_w_vector, 
 						operation = "+"
 					)
 
+
 		elif activation_function_method == "relu":
 			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
-				weight_update_matrix = self.reluWeightCalculations(
-											learning_rate = alpha, 
-											fwd_l_delta = fwd_l_delta, 
-											prev_l_output = prev_l_output, 
+				weight_adjustment_matrix = self.reluWeightCalculations(
+											learning_rate = alpha,
+											fwd_l_delta = fwd_l_delta,
+											prev_l_output_matrix = prev_l_output,
 											init_weight = init_weight
 											)
 
+				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
+
+				weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = delta_w_vector, 
+						operation = "-"
+					)
+
+		elif activation_function_method == "softmax":
+			# W = W - alpha * np.dot(delta, L_prev.T)
+			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
+				weight_adjustment_matrix = self.softmaxWeightCalculation(
+											alpha = alpha, 
+											fwd_l_delta = fwd_l_delta, 
+											prev_l_output_matrix = prev_l_output
+											)
+				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
+
+				weight_update_matrix = self.applyWeightAdjustment(
+						initial_weight = init_weight, 
+						weight_adjustment = delta_w_vector, 
+						operation = "-"
+					)
+
+		if Matrix().getShape(weight_update_matrix) != Matrix().getShape(init_weight):
+			err_msg = "Calculated update weight is not equal to the initial weight with shape " + str(Matrix().getShape(weight_update_matrix)) + " Rather than " + str(Matrix().getShape(init_weight))
+
+			raise Exception(err_msg + "\n With delta_w_vector of >>> " + str(delta_w_vector), "\n weight_update_matrix >>> " + str(weight_update_matrix))
+
+		
+		# Check if the retuning value is a valid matrix
+		# FLAG : TEMPORARY
+		"""
+		if not Matrix().isMatrixValid(weight_update_matrix):
+			err_msg = "The method 'updateLayerWeight' is returning a invalid matrix with value " + str(weight_update_matrix) + " with activation_function_method argument equal to " + activation_function_method
+			raise Exception(err_msg)
+		"""
 
 		if get_updated_weight == True:
-			return Array(weight_update_matrix)
+			return Vector(weight_update_matrix)
 		elif get_updated_weight == False:
-			return Array(weight_adjustment_matrix)
+			return Vector(weight_adjustment_matrix)
 		else:
 			raise Exception("No weight matrix is returned is returned")
 
 
 
 
-	def L2regularizedWeightUpdate(self, learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight, activation_function = "sigmoid"):
-		"""
-			Update weight matrix with a regularization method
-
-		"""
-		if activation_function == "sigmoid":
-			weight_update_matrix = self.sigmoidL2RegularizationWeightUpdate(learning_rate, delta_n, prev_layer_output, l2_lambda, intial_weight)
-
-		return weight_update_matrix
-
-
-
-	def getHiddenLayerDelta(self, l_output, weight, fwd_l_delta, activation_function = "sigmoid"):
+	def getHiddenLayerDelta(self, prev_l_output_matrix, weight, fwd_l_delta, activation_function):
 		"""
 			calculate the strenght of the neurons in a hidden layer 
 			
 			Arguments:
-			prev_l_output (List / Array)				:	The layer of neurons that is first to recieve data relative to forward propagation direction
-			weights (List / Array) 						:	The weights in the middle to the two given neurons
-			proceding_neuron_strenght (List / Array)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
+			prev_l_output (List / Vector)				:	The layer of neurons that is first to recieve data relative to forward propagation direction
+			weights (List / Vector) 						:	The weights in the middle to the two given neurons
+			proceding_neuron_strenght (List / Vector)	:	The layer of neurons that is second to recieve data relative to forward propagation direction
 			
 			Retuns: Vector
 
 		"""
 		if activation_function == "sigmoid":
 			delta_vector = self.sigmoidDeltaCalculation(
-								l_output = l_output, 
+								prev_l_output_matrix = prev_l_output_matrix, 
 								weight_matrix = weight, 
 								fwd_l_delta = fwd_l_delta
 								)
@@ -1354,26 +759,55 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 			delta_vector = self.reluDeltaCalculation(
 								l_fl_weight_matrix = weight, 
 								fwd_l_delta = fwd_l_delta, 
-								l_output = l_output
+								prev_l_output_matrix = prev_l_output_matrix
 							)
-		
+		else:
+			err_msg = "No Activation function named: " + activation_function
+			raise ValueError(err_msg)
 
 		return delta_vector
 
 
-	def adjustBiasWeight(self, neuron_strnght):
+
+
+	def adjustBiasWeight(self, l_delta, init_bias, learning_rate, activation_function):
 		"""
 			Calculate bias adjustment
 			
 			Argumemts:
-			neuron_strnght	(List / Array)	:	Updated neuron strenghts
+			l_delta	(List / Vector)	:	Updated neuron delta
 
-			Formula: -learning_rate * updated_neuron_strenght
+			Formula: 
+				ReLu 			:		delta_w_bias = learning_rate * error_signal * 1
+										new_bias = current_bias + delta_w_bias
+				sigmoid 		:		-learning_rate * updated_neuron_strenght
 			
-			Return Array
+			Return Vector
 		"""
-		adjusted_biase = Array(neuron_strnght).multiply(self.learning_rate)
-		return Array(adjusted_biase)
+
+		if  activation_function == "relu":
+			delta_bias = Vector(l_delta).multiplyScalar(learning_rate).multiplyScalar(1)
+			adjusted_biase = [Vector(init_bias[0]).addVector(delta_bias)]
+
+		elif activation_function == "sigmoid":
+			adjusted_biase = [Vector(l_delta).multiplyScalar(self.learning_rate)]
+
+		elif activation_function == "softmax":
+			bias_adjustment = Vector(l_delta).multiplyScalar(learning_rate)
+			adjusted_biase = [Vector(init_bias[0]).subtractVector(bias_adjustment)]
+
+
+		if Matrix().getShape(init_bias) == Matrix().getShape(adjusted_biase):
+			return adjusted_biase
+		elif Matrix().getShape(init_bias) != Matrix().getShape(adjusted_biase):
+			err_msg = "Error setting bias. Calculated shape is not equal to the initial bias shape: " + str(Matrix().getShape(init_bias) + " != " + str(Matrix().getShape(adjusted_biase)))
+
+			raise ValueError(err_msg)
+		else:
+			err_msg = "unknown error occured in adjustBiasWeight function"
+			raise Exception(err_msg)
+
+		
 		
 
 
@@ -1382,18 +816,21 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 			Calculate the mean squared error or cost value
 
 			Arguments;
-			predicted_ouputs_vector (List / Array) 				:	The unlabled output, or the output from the sigmoid function
-			actual_label_vector (List / Array)		:	The labled output
+			predicted_ouputs_vector (List / Vector) 				:	The unlabled output, or the output from the sigmoid function
+			actual_label_vector (List / Vector)		:	The labled output
 			
 			returns : float
 			Formula : 1 / lne(predicted_ouputs_vector) * sum((predicted_ouputs_vector - actual_label_vector) ** 2)
 
 		"""
 
-		arr_difference = self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)
-		squared_arr = self.vectorSquare(arr_difference)
+		#arr_difference = self.vectorSubtract(predicted_ouputs_vector, actual_label_vector)
+		#squared_arr = self.vectorSquare(arr_difference)
 
-		arr_sum = Array(squared_arr).sum()
+		arr_difference = Vector(predicted_ouputs_vector).subtractVector(actual_label_vector)
+		squared_arr = Vector(arr_difference).squared()
+ 
+		arr_sum = Vector(squared_arr).sum()
 		e = 1 / 3 * arr_sum
 
 		return e
@@ -1424,6 +861,11 @@ class BackPropagation(ArrayMethods, WeightUpdates, DeltaCalculationMethods):
 		final_weight_update = self.matrixScalarSubtract(init_weight, trm_2)
 
 		return final_weight_update
+
+
+
+
+
 
 
 
@@ -1472,154 +914,187 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 			# count the number of correct prediction to calculate accuracy of the model
 			correct_prediction = 0
-			
 
+			sleep(1)
 			for _ in tqdm(range(epoch)):
-				for training_batch_set_index in range(batches_count):
-					# The set of trainig data in the batch array
-					training_batch = self.batch_array[training_batch_set_index]
-					# The answer key or labeled ouput of the batch
-					batch_key = self.answer_key_batch_array[training_batch_set_index]
+				for training_batch_set, labeld_batch_key in zip(self.batch_array, self.answer_key_batch_array):
 
-					# loop through the entire data inside the batch 
-					count_data_in_batch = len(training_batch)
-					for data_index in range(count_data_in_batch):
-						# get the input data for the current loop
-						input_data = training_batch[data_index]
-						# get the labeld output of the input data
-						input_labeld_data = batch_key[data_index]
+					# get the input data for the current loop
+					input_data = training_batch_set
+					# get the labeld output of the input data
+					batch_input_labeld_data = labeld_batch_key
 
 
+					#### FORWARD PROPAGATION ####
+					# list every output of the neuron for every layer
+					batch_layer_ouput_tensor = []
 
-						#### FORWARD PROPAGATION ####
-						# holds the value of the ouputs of the previous layer the training_data variable is added intialy as it would 
-						# represent as the final ouput for the first layer in back propagation
-						layer_ouputs_matrix = []
-						
-						# The input of the current layer
-						current_layer_input = input_data
+					# The output of the previous layer and the input of the current layer in iteration
+					current_layer_input = input_data
+					#print("current_layer_input 1st >>> ", current_layer_input)
+					# Loop through the entire layer of the neural network for forward pass
+					for layer_index in range(layer_count):
+						layer_activation_function = self.layer_size_vectors[layer_index][1]
 
-						# Loop through the entire layer of the neural network
-						for layer_index in range(layer_count):
-							layer_activation_function = self.layer_size_vectors[layer_index][1]
-							# create a layer where neuron activation and other transformation will handle
-							layer_ouput = self.fowardPropagation(
-											input_value = current_layer_input, 
-											weight_value = self.weights_set[layer_index], 
-											bias_weight = self.bias_weight_set[layer_index],
+
+						# create a layer where neuron activation and other transformation will handle
+						current_layer_input = self.layerForwardPass(
+											input_matrix = current_layer_input,
+											weight_matrix = self.weights_set[layer_index], 
+											bias_weight_matrix = self.bias_weight_set[layer_index],
 											activation_function = layer_activation_function
 											)
+						#print("current_layer_input >>> ", current_layer_input)
 
-							# Append the output of the layer for backpropagation
-							layer_ouputs_matrix.append(layer_ouput)
-							# update the input for the next layer
-							current_layer_input = layer_ouput
+						
 
 
-						#### calculate Loss functions ####
-						#getCrossEntropyLoss getMeanSquaredError 
-						mean_square_error = self.getCrossEntropyLoss(
-							 						predicted_ouputs_vector = layer_ouputs_matrix[-1], 
-							 						actual_label_vector = input_labeld_data,
-							 						activation_function = "sigmoid"
-							 						)
-						# Append the result to the error log
-						self.mean_square_error_log.append(mean_square_error)
-						# Check if the model prediction was correct
-						final_prediction = ActivationFunction().argMax(layer_ouputs_matrix[-1])
-						if final_prediction == input_labeld_data:
+						# Append the output of the layer for backpropagation
+						batch_layer_ouput_tensor.append(current_layer_input)
+						# update the input for the next layer
+						current_layer_input = current_layer_input
+						
+
+
+					## Check if the model prediction was correct
+
+					for predicted_output, actual_output in zip(batch_layer_ouput_tensor[-1], batch_input_labeld_data):
+						final_prediction = ActivationFunction().argMax(predicted_output)
+						if final_prediction == actual_output:
 							correct_prediction += 1
 
 
+					self.calculateModelAccuracy(
+						n_of_correct_pred = correct_prediction, 
+						n_of_training_data = len(training_data),
+						training_epoch = epoch
+						)
 
+					#### calculate Loss functions ####
+					mean_square_error = self.getCrossEntropyLoss(
+						 						predicted_ouput_matrix = batch_layer_ouput_tensor[-1],
+						 						actual_label_matrix = batch_input_labeld_data,
+						 						activation_function = layer_activation_function
+						 						)
+					
+					# Append the result to the error log
+					self.mean_square_error_log.append(mean_square_error * -1)
 
-						#### BACK PROPAGATION #####
-						# delta of the current layer in loop, Initial value was calculated using the final layer strenght
-						delta_h = self.getFinalLayerDelta(
-												predicted_ouputs_vector = layer_ouputs_matrix[-1], 
-												actual_label_vector = input_labeld_data
-											)
-
-						# Loop throught the entire layer from start to the final
-						for layer_index in range(len(self.layer_size_vectors) - 1, -1, -1): 
-							# get the specific activation function use by the current layer in iteration
-							layer_activation_function = self.layer_size_vectors[layer_index][1]
-							# update the weight of the biases every layer using the delta_h
-							self.bias_weight_set[layer_index] = self.adjustBiasWeight(neuron_strnght = delta_h)
-
-							# check if the layer in proccess is a hidden layer
-							if layer_index != 0:
-								# if the regularization_method is set to L2 regularization method
-								if self.regularization_method == "L2":
-									# calculate the adjustment needed to the weight with the L2 regualrization equation
-									weight_update = self.L2regularizedWeightUpdate(
-																	learning_rate = self.learning_rate, 
-																	delta_n = delta_h, 
-																	prev_layer_output = layer_ouputs_matrix[layer_index - 1], 
-																	l2_lambda = self.l2_penalty, 
-																	intial_weight = self.weights_set[layer_index],
-																	activation_function = layer_activation_function
-																)
-
-								# if there is no regularization method used the the weight is calculated using the sigmoid derivative in calculateWeightAdjustment method
-								elif self.regularization_method == "none":
-									# calculate the adjustment needed to apply to the initial weight
-									
-									weight_update = self.updateLayerWeight(
-															alpha = self.learning_rate,
-															fwd_l_delta = delta_h, 
-															prev_l_output = layer_ouputs_matrix[layer_index - 1], 
-															init_weight = self.weights_set[layer_index],
-															activation_function_method = layer_activation_function
-														)
-
-
-								# Update the layer weight with the new calculated weight
-								self.weights_set[layer_index] = weight_update
-								layer_strenght = self.getHiddenLayerDelta(
-											l_output = layer_ouputs_matrix[layer_index - 1], 
-											weight = weight_update, 
-											fwd_l_delta = delta_h,
-											activation_function = layer_activation_function
-										)
-
-								# update the value of delta_h coming from the calculated value of the hidden layer strenghts
-								delta_h = layer_strenght
-
-
-							## check if the current layer in interation is the main input layer ##
-							elif layer_index == 0:
-								if self.regularization_method == "L2":
-									weight_update = self.L2regularizedWeightUpdate(
-																	learning_rate = self.learning_rate, 
-																	delta_n = delta_h, 
-																	prev_layer_output = input_data, 
-																	l2_lambda = self.l2_penalty, 
-																	intial_weight = self.weights_set[layer_index],
-																	activation_function = layer_activation_function
-																)
-									
-								elif self.regularization_method == "none":
-									weight_update = self.updateLayerWeight(
-															alpha = self.learning_rate,
-															fwd_l_delta = delta_h, 
-															prev_l_output = input_data, 
-															init_weight = self.weights_set[layer_index],
-															activation_function_method = layer_activation_function
-														)
-
-								self.weights_set[layer_index] = weight_update
-								break
-
-
-			# After fitting calculate the model acccuracy
-			self.calculateModelAccuracy(
-					n_of_correct_pred = correct_prediction, 
-					n_of_training_data = len(training_data), 
-					training_epoch = epoch
-				)
+					self.BackPropagationProcess(
+						layers_output_tensor = batch_layer_ouput_tensor,
+						actual_label_matrix = batch_input_labeld_data
+						)
 
 			self.printFittingSummary()
+
+
+
+	def BackPropagationProcess(self, layers_output_tensor, actual_label_matrix):
+		#print("Back propagating to a network with : ", len(range(len(self.layer_sizes) - 1, -1, -1)), " Amount of layer index and sizes indexing: ", self.layer_size_vectors)
+		try:
+			#print("Updating final delta with activation function : ", self.layer_size_vectors[-1])
+			fl_d = self.getFinalLayerDelta(
+				fl_p_out_tensor = layers_output_tensor[-1], 
+				actual_label_matrix = actual_label_matrix, 
+				activation_function = self.layer_size_vectors[-1][1]
+	 			)
+		except Exception as err:
+			err_msg = "Error getting final layer data with a mesage: >>> " + str(err),
+			raise Exception(err_msg)
+
+		# 2-3. Loop through the entire network
+		# 2. calculate and update weight to the current layer
+		# 3. calculate the delta of the current layer
+		if not Vector(fl_d).isValid():
+			err_msg = "On calculating finala layer delta with retuning value of : " + str(fl_d) + " Fro values comin from : \n layers_output_tensor[-1] = " + str(layers_output_tensor[-1]) + "\n actual_label_matrix = " + str(actual_label_matrix) +  " \n activation_function = " + activation_function
+			raise Exception(err_msg)
+
+		fwd_l_d = fl_d # This delta value will be updated for every layer
+
+
+		for layer_index in range(len(self.layer_sizes) - 1, -1, -1):
+			layer_activation_function = self.layer_size_vectors[layer_index][1]
+
+
+			#print("Updating bias weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
+			self.bias_weight_set[layer_index] = self.adjustBiasWeight(
+								l_delta = fwd_l_d,
+								init_bias = self.bias_weight_set[layer_index],
+								learning_rate = self.learning_rate,
+								activation_function = layer_activation_function
+								)
+
+			if not Matrix().isMatrixValid(self.bias_weight_set[layer_index]):
+				err_msg = "Invelid matrix on passing value to 'adjustBiasWeight' method with value self.bias_weight_set[layer_index] = " + str(self.bias_weight_set[layer_index]) + " From values: \n fwd_l_d = " + str(fwd_l_d) + "\n self.bias_weight_set[layer_index] = " + str(self.bias_weight_set[layer_index]) + " \n learning_rate = " + str(self.learning_rate) + " \n activation_function = " + layer_activation_function
+				raise Exception(err_msg)
+
+
+
+
+
+
+			if not Vector(fwd_l_d).isValid() and not Matrix().isMatrixValid(layers_output_tensor[layer_index - 1]) and not Matrix().isMatrixValid(self.weights_set[layer_index]):
+				err_msg = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+				raise Exception(err_msg)
+
+
+			if layer_index != 0: # if the layer is a hidden layer
+				#print("Updating weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
+				l_w_update = self.updateLayerWeight(
+					alpha = self.learning_rate, 
+					fwd_l_delta = fwd_l_d, 
+					prev_l_output = layers_output_tensor[layer_index - 1], 
+					init_weight = self.weights_set[layer_index], 
+					activation_function_method = layer_activation_function 
+					)
+
+				
+				
+				if not Matrix().isMatrixValid(l_w_update):
+					err_msg_up = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+					err_msg= "Matrix Invalid hidden l_w_update = " + str(l_w_update) + "Passed from value above : \n" + err_msg_up + "Fom activatin function: " + layer_activation_function
+					raise Exception(err_msg)
+
+				self.weights_set[layer_index] = l_w_update
+
+				# cHANGES 
+				#print("Updating delta in layer: ", layer_index, " with activation funcvtion : ", self.layer_size_vectors[layer_index - 1][1])
+				cld_l_d = self.getHiddenLayerDelta(
+					prev_l_output_matrix = layers_output_tensor[layer_index - 1],
+					weight = l_w_update,
+					fwd_l_delta = fwd_l_d,
+					activation_function = self.layer_size_vectors[layer_index - 1][1]#layer_activation_function
+					)
+
+				if not Vector(cld_l_d).isValid():
+					err_msg = "On calculating hidden layer delta wi value returning: " + str(cld_l_d) + "From values : \n layers_output_tensor[layer_index - 1]" + str(layers_output_tensor[layer_index - 1]) + "\n l_w_update = " + str(l_w_update) + " \n fwd_l_d = " + str(fwd_l_d) + " \n activation function " + layer_activation_function
+					raise Exception(err_msg)
+
+				fwd_l_d = cld_l_d
+
+
+
+
+			elif layer_index == 0: # if the layer is the input layer
+				#print("Updating weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
+				l_w_update = self.updateLayerWeight(
+					alpha = self.learning_rate, 
+					fwd_l_delta = fwd_l_d, 
+					prev_l_output = layers_output_tensor[layer_index - 1],
+					init_weight = self.weights_set[layer_index], 
+					activation_function_method = layer_activation_function
+					)
+				
+
+				if not Matrix().isMatrixValid(l_w_update):
+					err_msg_up = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+					err_msg= "Matrix Invalid input l_w_update = " + str(l_w_update) + "Passed from value above : \n" + err_msg_up + "Fom activatin function: " + layer_activation_function
+					raise Exception(err_msg)
+
+				self.weights_set[layer_index] = l_w_update
+
+
+
 
 
 
@@ -1628,17 +1103,23 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		layer_output_arr = []
 
 		for layer_index in range(len(self.layer_sizes)):
-			# create a layer where neuron activation and other transformation will handle
-			layer_ouput = self.fowardPropagation(
-							input_value = layer_input, 
-							weight_value = self.weights_set[layer_index], 
-							bias_weight = self.bias_weight_set[layer_index],
-							activation_function = "sigmoid"
-							)
-			layer_output_arr.append(layer_ouput)
-			layer_input = layer_ouput
+			layer_activation_function = self.layer_size_vectors[layer_index][1]
+			
+			current_layer_input = self.layerForwardPass(
+								input_matrix = layer_input,
+								weight_matrix = self.weights_set[layer_index], 
+								bias_weight_matrix = self.bias_weight_set[layer_index],
+								activation_function = layer_activation_function
+								)
+			
+			layer_output_arr.append(current_layer_input)
+			layer_input = current_layer_input
+			
 		
 		return layer_output_arr[-1]
+
+
+
 
 
 	def initailizeLayerSizes(self):
@@ -1732,6 +1213,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		return test_data_batch_array, answer_key_batch_array
 
 
+
 	def printNetworkPrelimSummary(self, epoch, batch_size):
 		tab_distance = 4
 		tab = "...." * tab_distance
@@ -1764,6 +1246,17 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 
 
+	def evaluateBatchOutput(self, prediction_matrix, labeld_matrix):
+		correct_prediction = 0
+
+		for p_vect_ind in range(len(prediction_matrix)):
+			if prediction_matrix[p_vect_ind] == labeld_matrix[p_vect_ind]:
+				correct_prediction += 1
+
+		return correct_prediction
+
+
+
 	def calculateModelAccuracy(self, n_of_correct_pred, n_of_training_data, training_epoch):
 		"""
 			Calculate the model accurary
@@ -1785,6 +1278,7 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 	def saveModelToJson(self, fname = "NeuroPyModel"):
 		data_to_save = {
+		"version_code" : VERSION_CODE,
 		"input_size" : self.input_size,
 		"layer_size_vectors" : self.layer_size_vectors,
 		"learning_rate" : self.learning_rate,
@@ -1860,8 +1354,6 @@ class DataManager():
 
 		training_partition = int(training_partition * input_data_lenght)
 
-
-
 		trainig_input_data = []
 		test_input_data = []
 
@@ -1883,3 +1375,5 @@ class DataManager():
 			last_data_indexed += 1
 
 		return trainig_input_data, training_labeld_data, test_input_data, test_labeld_data
+
+
