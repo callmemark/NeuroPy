@@ -429,6 +429,20 @@ class Matrix():
 
 
 
+	def matrixScalarAddition(self, matrix, scalar_minuend):
+		output_array = []
+
+		for row in matrix:
+			col_val_sum = []
+			for col_val in row:
+				col_val_sum.append(col_val + scalar_minuend)
+
+			output_array.append(col_val_sum)
+
+		return output_array
+
+
+
 	def matrixAverage(self, ndMatrix):
 		"""
 			Calculate the matrix indide the list of matrix

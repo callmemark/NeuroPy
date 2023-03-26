@@ -387,7 +387,7 @@ class Vector(list):
 		returned_value = True
 
 		for value_index in range(len(self)):
-			if self[value_index] == float("inf"):
+			if self[value_index] == float("inf") or self[value_index] == -float("inf"):
 				returned_value = False
 				break
 

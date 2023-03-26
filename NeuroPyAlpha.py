@@ -9,8 +9,8 @@ Description: Contains class to create simple but expandable neural network from 
 """
 
 from random import uniform
-from math import log, sqrt
-from VectorMethods import Vector
+from math import log, sqrt, isnan
+from VectorMethods import Vector, Scalar
 from MatrixMethods import Matrix, Tensor3D
 from time import sleep
 import json
@@ -21,8 +21,6 @@ except:
 
 
 VERSION_CODE = "NeuroPy Version Alpha-0.0.13"
-
-
 
 
 
@@ -127,10 +125,8 @@ class ActivationFunction():
 
 			Returns: float
 		"""
-		x = x
 		result = 1 / (1 + self.E ** -x)
-
-		return result
+		return round(result, 7)
 
 
 	def argMax(self, ouput_vector):
@@ -163,7 +159,7 @@ class ActivationFunction():
 			input_value (Scalar / float) 		:  value from the weighted sum of the input
 			return (Scalar / float)
 		"""
-		return max(0, input_value)
+		return max(0.0, input_value)
 
 
 
@@ -213,28 +209,55 @@ class ForwardPropagation(ActivationFunction):
 			
 			Returns (Vector) : The ouput of the this layer
 		"""
+		# FLAG : TEMPORARY
+		"""
+		if not Matrix().isMatrixValid(input_matrix):
+			err_msg = "On method 'layerForwardPass' Argument input_matrix is not a valid matrix with value " + str(input_matrix)
+			raise ValueError(err_msg)
+
+		if not Matrix().isMatrixValid(weight_matrix):
+			err_msg = "On method 'layerForwardPass' Argument weight_matrix is not a valid matrix with value " + str(weight_matrix)
+			raise ValueError(err_msg)
+
+		if not Matrix().isMatrixValid(bias_weight_matrix):
+			err_msg = "On method 'layerForwardPass' Argument bias_weight_matrix is not a valid matrix with value " + str(bias_weight_matrix)
+			raise ValueError(err_msg)
+		"""
+
 		weighted_sum_matrix_set = self.getWeightedSum(weight_matrix, input_matrix)
 		biased_weighted_sum_set = self.applyBias(weighted_sum_matrix_set, bias_weight_matrix)
 
+		#print("input_matrix >>> ", Matrix().getShape(input_matrix))
+		#print("weighted_sum_matrix_set >>> ", weighted_sum_matrix_set)
 		output_matrix = []
 
 
 		try:
 			# Functions that accept scalar as argument
+			loop_count = 0 
 			for weighted_sum  in weighted_sum_matrix_set:
 				act_func_vector = []
-
+				
 				for input_val in weighted_sum:
 					if activation_function == "sigmoid":
-						act_func_vector.append(self.sigmoidFunction(input_val))
+						sigmoid_output = self.sigmoidFunction(input_val)
+						act_func_vector.append(sigmoid_output)
 
 					elif activation_function == "relu":
-						act_func_vector.append(self.relu(input_val))
+						relu_output = self.relu(input_val)
+						act_func_vector.append(relu_output)
 
 					else:
 						raise NameError("No conditons return true")
 
-			output_matrix.append(act_func_vector)
+				if Vector(act_func_vector).notNaN() == False:
+					err_msg = "Cant append vector containing NaN value " + str(act_func_vector)
+					raise Exception(err_msg)
+
+
+				loop_count += 1
+				output_matrix.append(act_func_vector)
+
 
 		except NameError:
 			# funtions that accept and return a vector
@@ -246,7 +269,9 @@ class ForwardPropagation(ActivationFunction):
 					err_msg = "No activation function found : " + activation_function
 					raise ValueError(err_msg)
 
+		#print("output_matrix >>> ", output_matrix)
 		return output_matrix
+
 
 
 	def getWeightedSum(self, weight_matrix, input_matrix):
@@ -257,7 +282,9 @@ class ForwardPropagation(ActivationFunction):
 			weight_arr (matrix)	: 	The generated weight
 			Returns (matrix) : Weighted sum 
 		"""
-		return Matrix().matrixDotProd(input_matrix, weight_matrix)
+		returned_matrix = Matrix().matrixDotProd(input_matrix, weight_matrix)
+		return returned_matrix
+
 
 
 
@@ -272,12 +299,6 @@ class ForwardPropagation(ActivationFunction):
 			Returns (Vector) : biased inputs
 		"""
 		return Matrix().matrixAddition(weighted_sum_matrix_set, bias_weight_matrix)
-
-
-
-
-
-
 
 
 
@@ -306,14 +327,14 @@ class WeightUpdates():
 			Returns: (Matrix) Returns the updated weight of the given initial weight value
 
 			formula:
-			weight_ajustments = -learning_rate * [outerProduct(fwd_l_delta, prev_l_output)]
+				weight_ajustments = -learning_rate * [outerProduct(fwd_l_delta, prev_l_output)]
 		"""
-
 
 		weight_adjustment_matrix = []
 
 		for prev_l_output in prev_l_output_matrix:
 			neighbor_neuron_dprod = Matrix().outerProduct(fwd_l_delta, prev_l_output)
+
 			weight_set = []
 			for selected_row in neighbor_neuron_dprod:
 				result_row = []
@@ -324,73 +345,49 @@ class WeightUpdates():
 
 				weight_set.append(result_row)
 
+
 			weight_adjustment_matrix.append(weight_set)
 
 		return weight_adjustment_matrix
 
 
-	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output_matrix, init_weight):
+
+
+	def reluWeightCalculations(self, learning_rate, fwd_l_delta, prev_l_output_matrix, init_weight, regularization_method = "none", lamb_red = 0.001):
 		"""
 			calculate and update the weights without any regularization
-				New:	
-						dW = prev_l_output * fwd_l_delta.T
-						W = W - learning_rate * (dW + lambda * W) with Lw
-						W = W - learning_rate * dW  # Without L2
+			Equation:
+				dW = dot(output[l], delta)
+				W = W - (alpha / m) * dW # No regularization
+				W = W - (alpha / m) * dW + (lambda / m) * W # with regularization
+
 		"""
-		
 		delta_w_matrix = []
+
 		for prev_layer_output in prev_l_output_matrix:
 
-			weight_adjustment = Matrix().transpose(Matrix().outerProduct(prev_layer_output, fwd_l_delta))
-			weight_update = Matrix().matrixAddition(init_weight, Matrix().matrixScalarMultiply(weight_adjustment, learning_rate)) 
+			d_W = Matrix().transpose(Matrix().outerProduct(prev_layer_output, fwd_l_delta))
+			
+			if regularization_method == "none":
+				weight_update = Matrix().matrixScalarMultiply(d_W, (learning_rate / len(prev_l_output_matrix)))
+
+			elif regularization_method ==  "L2":
+				reg_mthd_qtnt = (lamb_red / len(prev_l_output_matrix))
+				reg_mthd = Matrix().matrixScalarMultiply(init_weight, reg_mthd_qtnt)
+
+				weight_update = Matrix().matrixAddition(reg_mthd, d_W)
+
+			
 
 			delta_w_matrix.append(weight_update)
-
-						
+		
 		return delta_w_matrix
 
 
-	def sigmoidL2RegularizationWeightUpdate(self, learning_rate, delta_n, prev_layer_output_matrix, l2_lambda, intial_weight):
-		"""
-			Apply the l2 regularization when calculating the weights of the layers
-
-			Aguemtns:
-			learning_rate (float)			: The models learning rate
-			delta_n (Vector)				: The strenght of the hidden layer recieving from the weihts being update
-			prev_layer_output (Matrix)		: The output of the sactivation function of the previos layer
-			l2_lambda (float) 				: L2 penalty
-			intial_weight (matrix)			: The initial weight
-
-			return matrix with values representing the amount to change the weight
-			Equation: delta_w = alpha * (delta * X.T) + lambda * W
- 
-		"""
-		# HERE IS THE PROBLE
-		delta_w_matrix = []
-		for output_matrix in prev_layer_output_matrix:
-			for prev_layer_output in output_matrix:
-				delta_w = Matrix().matrixAddition(
-								Vector(delta_n).multiplyVector(Vector(prev_layer_output).multiplyScalar(learning_rate)), 
-								Matrix().matrixScalarMultiply(intial_weight, l2_lambda)
-								)
-				delta_w_matrix.append(delta_w)
-
-		delta_w_vector = Matrix().columnAverage(delta_w_matrix)[0]
-		
-
-		# W = W - (alpha * dW + lambda * W)
-		weight_matrix_update = Matrix().matrixSubtract(
-								intial_weight,
-								Matrix().matrixAddition(
-									Matrix().matrixScalarMultiply(delta_w_vector, learning_rate), 
-									Matrix().matrixScalarMultiply(intial_weight, l2_lambda)
-									)
-								) 
-
-		return Vector(weight_matrix_update)
 
 
-	def softmaxWeightClaculation(self, alpha, fwd_l_delta, prev_l_output_matrix):
+
+	def softmaxWeightCalculation(self, alpha, fwd_l_delta, prev_l_output_matrix):
 		"""
 			calculate the weight for a layer with softmax activation function
 
@@ -509,6 +506,8 @@ class DeltaCalculationMethods():
 		"""
 
 		calculated_delta_matrix = []
+
+		# Relu derivative where x = 1 if x > 0
 		for l_output in prev_l_output_matrix:
 			relu_derivative = []
 			for value in l_output:
@@ -518,12 +517,13 @@ class DeltaCalculationMethods():
 					relu_derivative.append(0)
 
 			weight_delta_sum = Matrix().matrixSum(Matrix().matrixVectorMultiply(Matrix().transpose(l_fl_weight_matrix), fwd_l_delta))
-			delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
 
+
+			delta_vector = Vector(relu_derivative).multiplyScalar(weight_delta_sum)
 			calculated_delta_matrix.append(delta_vector)
 
-		
-		return Matrix().columnAverage(calculated_delta_matrix)[0]
+		output_vector = Matrix().columnAverage(calculated_delta_matrix)[0]
+		return output_vector
 
 
 
@@ -627,11 +627,17 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 				Where:
 					z = predicted probability distribution
 		"""
+		clam_val = 1e-7
 		for predicted_output_vector, actual_label_vector in zip(predicted_ouput_matrix, actual_label_matrix):
 			output_vector = []
+
 			for p, y in zip(predicted_output_vector, actual_label_vector):
 				if activation_function == "softmax":
-					cross_entropy_calculation = y * log(p)
+					try:
+						cross_entropy_calculation = y * log(Scalar().clamp(p, clam_val, 1-clam_val))
+					except:
+						err_msg = "Math domain error with given value of  p = " + str(p) + " from vector : " + str(predicted_output_vector)
+						raise Exception(err_msg)
 				elif activation_function == "sigmoid":
 					cross_entropy_calculation = y * log(p) + (1 - y) * log(1 - p)
 				else:
@@ -672,26 +678,28 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 						operation = "+"
 					)
 
+
 		elif activation_function_method == "relu":
 			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
 				weight_adjustment_matrix = self.reluWeightCalculations(
-											learning_rate = alpha, 
-											fwd_l_delta = fwd_l_delta, 
-											prev_l_output_matrix = prev_l_output, 
+											learning_rate = alpha,
+											fwd_l_delta = fwd_l_delta,
+											prev_l_output_matrix = prev_l_output,
 											init_weight = init_weight
 											)
+
 				delta_w_vector = Tensor3D().columnAverage(weight_adjustment_matrix)
 
 				weight_update_matrix = self.applyWeightAdjustment(
 						initial_weight = init_weight, 
 						weight_adjustment = delta_w_vector, 
-						operation = "+"
+						operation = "-"
 					)
 
 		elif activation_function_method == "softmax":
 			# W = W - alpha * np.dot(delta, L_prev.T)
 			if alpha != 0 and len(fwd_l_delta) != 0 and len(prev_l_output) != 0 and len(init_weight) != 0:
-				weight_adjustment_matrix = self.softmaxWeightClaculation(
+				weight_adjustment_matrix = self.softmaxWeightCalculation(
 											alpha = alpha, 
 											fwd_l_delta = fwd_l_delta, 
 											prev_l_output_matrix = prev_l_output
@@ -709,6 +717,14 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 
 			raise Exception(err_msg + "\n With delta_w_vector of >>> " + str(delta_w_vector), "\n weight_update_matrix >>> " + str(weight_update_matrix))
 
+		
+		# Check if the retuning value is a valid matrix
+		# FLAG : TEMPORARY
+		"""
+		if not Matrix().isMatrixValid(weight_update_matrix):
+			err_msg = "The method 'updateLayerWeight' is returning a invalid matrix with value " + str(weight_update_matrix) + " with activation_function_method argument equal to " + activation_function_method
+			raise Exception(err_msg)
+		"""
 
 		if get_updated_weight == True:
 			return Vector(weight_update_matrix)
@@ -717,21 +733,6 @@ class BackPropagation(WeightUpdates, DeltaCalculationMethods):
 		else:
 			raise Exception("No weight matrix is returned is returned")
 
-
-
-
-
-	# FLAG : BROKEN
-	def L2regularizedWeightUpdate(self, learning_rate, delta_n, prev_layer_output_matrix, l2_lambda, intial_weight, activation_function = "sigmoid"):
-		"""
-			Update weight matrix with a regularization method
-
-		"""
-		weight_update_matrix = []
-		if activation_function == "sigmoid":
-			calculated_weight_matrix = self.sigmoidL2RegularizationWeightUpdate(learning_rate, delta_n, prev_layer_output_matrix, l2_lambda, intial_weight)
-	
-		return weight_update_matrix
 
 
 
@@ -930,42 +931,29 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 					# The output of the previous layer and the input of the current layer in iteration
 					current_layer_input = input_data
-
+					#print("current_layer_input 1st >>> ", current_layer_input)
 					# Loop through the entire layer of the neural network for forward pass
 					for layer_index in range(layer_count):
 						layer_activation_function = self.layer_size_vectors[layer_index][1]
-						
-						# create a layer where neuron activation and other transformation will handle
-						"""
-						try: # FLAG : TEMPORARY
-							print("\nlayer_index >>>",layer_index)
-							print("current_layer_input >>> ", Matrix().getShape(current_layer_input))
-							print("weights_set >>> ", Matrix().getShape(self.weights_set[layer_index]))
-							print("bias_weight_set >>> ", Matrix().getShape(self.bias_weight_set[layer_index]))
-							print("layer_activation_function >>> ", layer_activation_function)
-							print("###DONE###")
-						except:
-							print("\nlayer_index >>>",layer_index)
-							print("current_layer_input >>> ", current_layer_input)
-							print("weights_set >>> ", self.weights_set[layer_index])
-							print("bias_weight_set >>> ", self.bias_weight_set[layer_index])
-							print("layer_activation_function >>> ", layer_activation_function)
-							print("###DONE###")
-							raise Exception("Something wrong happen while fitting")
-						"""
 
+
+						# create a layer where neuron activation and other transformation will handle
 						current_layer_input = self.layerForwardPass(
 											input_matrix = current_layer_input,
 											weight_matrix = self.weights_set[layer_index], 
 											bias_weight_matrix = self.bias_weight_set[layer_index],
 											activation_function = layer_activation_function
 											)
+						#print("current_layer_input >>> ", current_layer_input)
+
+						
+
 
 						# Append the output of the layer for backpropagation
 						batch_layer_ouput_tensor.append(current_layer_input)
 						# update the input for the next layer
 						current_layer_input = current_layer_input
-
+						
 
 
 					## Check if the model prediction was correct
@@ -994,17 +982,17 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 
 					self.BackPropagationProcess(
 						layers_output_tensor = batch_layer_ouput_tensor,
-						actual_label_matrix = batch_input_labeld_data,
-						layer_input_matrix = input_data
+						actual_label_matrix = batch_input_labeld_data
 						)
 
 			self.printFittingSummary()
 
 
 
-	def BackPropagationProcess(self, layers_output_tensor, actual_label_matrix, layer_input_matrix):
-		# 1. calculate the Final layer delta
+	def BackPropagationProcess(self, layers_output_tensor, actual_label_matrix):
+		#print("Back propagating to a network with : ", len(range(len(self.layer_sizes) - 1, -1, -1)), " Amount of layer index and sizes indexing: ", self.layer_size_vectors)
 		try:
+			#print("Updating final delta with activation function : ", self.layer_size_vectors[-1])
 			fl_d = self.getFinalLayerDelta(
 				fl_p_out_tensor = layers_output_tensor[-1], 
 				actual_label_matrix = actual_label_matrix, 
@@ -1017,11 +1005,18 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 		# 2-3. Loop through the entire network
 		# 2. calculate and update weight to the current layer
 		# 3. calculate the delta of the current layer
+		if not Vector(fl_d).isValid():
+			err_msg = "On calculating finala layer delta with retuning value of : " + str(fl_d) + " Fro values comin from : \n layers_output_tensor[-1] = " + str(layers_output_tensor[-1]) + "\n actual_label_matrix = " + str(actual_label_matrix) +  " \n activation_function = " + activation_function
+			raise Exception(err_msg)
+
 		fwd_l_d = fl_d # This delta value will be updated for every layer
 
-		for layer_index in range(len(self.layer_sizes) - 1, -1, -1):
-			layer_activation_function = self.layer_size_vectors[layer_index - 1][1]
 
+		for layer_index in range(len(self.layer_sizes) - 1, -1, -1):
+			layer_activation_function = self.layer_size_vectors[layer_index][1]
+
+
+			#print("Updating bias weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
 			self.bias_weight_set[layer_index] = self.adjustBiasWeight(
 								l_delta = fwd_l_d,
 								init_bias = self.bias_weight_set[layer_index],
@@ -1029,7 +1024,22 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 								activation_function = layer_activation_function
 								)
 
+			if not Matrix().isMatrixValid(self.bias_weight_set[layer_index]):
+				err_msg = "Invelid matrix on passing value to 'adjustBiasWeight' method with value self.bias_weight_set[layer_index] = " + str(self.bias_weight_set[layer_index]) + " From values: \n fwd_l_d = " + str(fwd_l_d) + "\n self.bias_weight_set[layer_index] = " + str(self.bias_weight_set[layer_index]) + " \n learning_rate = " + str(self.learning_rate) + " \n activation_function = " + layer_activation_function
+				raise Exception(err_msg)
+
+
+
+
+
+
+			if not Vector(fwd_l_d).isValid() and not Matrix().isMatrixValid(layers_output_tensor[layer_index - 1]) and not Matrix().isMatrixValid(self.weights_set[layer_index]):
+				err_msg = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+				raise Exception(err_msg)
+
+
 			if layer_index != 0: # if the layer is a hidden layer
+				#print("Updating weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
 				l_w_update = self.updateLayerWeight(
 					alpha = self.learning_rate, 
 					fwd_l_delta = fwd_l_d, 
@@ -1037,25 +1047,53 @@ class CreateNetwork(ForwardPropagation, BackPropagation):
 					init_weight = self.weights_set[layer_index], 
 					activation_function_method = layer_activation_function 
 					)
+
+				
+				
+				if not Matrix().isMatrixValid(l_w_update):
+					err_msg_up = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+					err_msg= "Matrix Invalid hidden l_w_update = " + str(l_w_update) + "Passed from value above : \n" + err_msg_up + "Fom activatin function: " + layer_activation_function
+					raise Exception(err_msg)
+
 				self.weights_set[layer_index] = l_w_update
+
+				# cHANGES 
+				#print("Updating delta in layer: ", layer_index, " with activation funcvtion : ", self.layer_size_vectors[layer_index - 1][1])
 				cld_l_d = self.getHiddenLayerDelta(
 					prev_l_output_matrix = layers_output_tensor[layer_index - 1],
 					weight = l_w_update,
 					fwd_l_delta = fwd_l_d,
-					activation_function = layer_activation_function
+					activation_function = self.layer_size_vectors[layer_index - 1][1]#layer_activation_function
 					)
+
+				if not Vector(cld_l_d).isValid():
+					err_msg = "On calculating hidden layer delta wi value returning: " + str(cld_l_d) + "From values : \n layers_output_tensor[layer_index - 1]" + str(layers_output_tensor[layer_index - 1]) + "\n l_w_update = " + str(l_w_update) + " \n fwd_l_d = " + str(fwd_l_d) + " \n activation function " + layer_activation_function
+					raise Exception(err_msg)
 
 				fwd_l_d = cld_l_d
 
+
+
+
 			elif layer_index == 0: # if the layer is the input layer
+				#print("Updating weight in layer: ", layer_index, " with activation funcvtion : ", layer_activation_function)
 				l_w_update = self.updateLayerWeight(
 					alpha = self.learning_rate, 
 					fwd_l_delta = fwd_l_d, 
-					prev_l_output = layer_input_matrix, 
+					prev_l_output = layers_output_tensor[layer_index - 1],
 					init_weight = self.weights_set[layer_index], 
 					activation_function_method = layer_activation_function
 					)
+				
+
+				if not Matrix().isMatrixValid(l_w_update):
+					err_msg_up = "Invalid Values found in one of this: \nfwd_l_d = " + str(fwd_l_d) + "\n layers_output_tensor[layer_index - 1] = " + str(layers_output_tensor[layer_index - 1]) + "\n self.weights_set[layer_index] = " + str(self.weights_set[layer_index])
+					err_msg= "Matrix Invalid input l_w_update = " + str(l_w_update) + "Passed from value above : \n" + err_msg_up + "Fom activatin function: " + layer_activation_function
+					raise Exception(err_msg)
+
 				self.weights_set[layer_index] = l_w_update
+
+
 
 
 
